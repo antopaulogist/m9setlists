@@ -1,0 +1,13 @@
+[build]
+  # No build process needed for static site
+  publish = "."
+  
+[[redirects]]
+  # Handle client-side routing
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  
+[build.environment]
+  # Environment variables (will be set in Netlify dashboard)
+  NODE_VERSION = "18" 

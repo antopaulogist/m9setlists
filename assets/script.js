@@ -1,3 +1,10 @@
+// Supabase Configuration
+const SUPABASE_URL = 'https://your-project-id.supabase.co';
+const SUPABASE_ANON_KEY = 'your-anon-key';
+
+// Initialize Supabase (will be loaded from CDN)
+let supabase;
+
 // DOM Elements
 const listsView = document.getElementById('lists-view');
 const listView = document.getElementById('list-view');
@@ -21,6 +28,9 @@ let undoTimeout = null;
 
 // Initialize app
 async function init() {
+    // Initialize Supabase
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
     await loadLists();
     showListsView();
     bindEvents();
@@ -35,15 +45,26 @@ function bindEvents() {
     todoForm.addEventListener('submit', addItem);
 }
 
-// Load lists from server
+// Load lists from Supabase
 async function loadLists() {
     try {
-        const response = await fetch('/api/lists');
-        if (response.ok) {
-            lists = await response.json();
-        } else {
-            console.error('Failed to load lists from server');
+        const { data, error } = await supabase
+            .from('lists')
+            .select('*');
+        
+        if (error) {
+            console.error('Error loading lists:', error);
             lists = {};
+        } else {
+            // Convert array to object format
+            lists = {};
+            data.forEach(list => {
+                lists[list.id] = {
+                    name: list.name,
+                    items: list.items,
+                    created: list.created
+                };
+            });
         }
         
         // Check for old localStorage data and migrate it
@@ -93,23 +114,31 @@ async function migrateLocalStorageData(savedLists, oldItems) {
     }
 }
 
-// Save lists to server
+// Save lists to Supabase
 async function saveLists() {
     try {
-        const response = await fetch('/api/lists', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(lists)
-        });
+        // Delete all existing lists first
+        await supabase.from('lists').delete().neq('id', 'impossible-id');
         
-        if (!response.ok) {
-            throw new Error('Failed to save lists to server');
+        // Insert all current lists
+        const listsArray = Object.keys(lists).map(id => ({
+            id: id,
+            name: lists[id].name,
+            items: lists[id].items,
+            created: lists[id].created
+        }));
+        
+        if (listsArray.length > 0) {
+            const { error } = await supabase
+                .from('lists')
+                .insert(listsArray);
+            
+            if (error) {
+                console.error('Error saving lists:', error);
+            }
         }
     } catch (error) {
         console.error('Error saving lists:', error);
-        // Optionally show user notification about save failure
     }
 }
 
