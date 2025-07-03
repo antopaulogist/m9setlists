@@ -28,12 +28,23 @@ let undoTimeout = null;
 
 // Initialize app
 async function init() {
-    // Initialize Supabase
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Wait for Supabase to load
+    if (!window.supabase) {
+        console.error('Supabase library not loaded');
+        return;
+    }
     
-    await loadLists();
-    showListsView();
-    bindEvents();
+    try {
+        // Initialize Supabase
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('Supabase initialized successfully');
+        
+        await loadLists();
+        showListsView();
+        bindEvents();
+    } catch (error) {
+        console.error('Failed to initialize app:', error);
+    }
 }
 
 // Event listeners
@@ -47,7 +58,14 @@ function bindEvents() {
 
 // Load lists from Supabase
 async function loadLists() {
+    if (!supabase) {
+        console.error('Supabase not initialized');
+        lists = {};
+        return;
+    }
+    
     try {
+        console.log('Loading lists from Supabase...');
         const { data, error } = await supabase
             .from('lists')
             .select('*');
@@ -56,6 +74,7 @@ async function loadLists() {
             console.error('Error loading lists:', error);
             lists = {};
         } else {
+            console.log('Lists loaded successfully:', data);
             // Convert array to object format
             lists = {};
             data.forEach(list => {
@@ -116,11 +135,39 @@ async function migrateLocalStorageData(savedLists, oldItems) {
 
 // Save lists to Supabase
 async function saveLists() {
+    if (!supabase) {
+        console.error('Supabase not initialized');
+        return;
+    }
+    
     try {
-        // Delete all existing lists first
-        await supabase.from('lists').delete().neq('id', 'impossible-id');
+        // Get current lists from database
+        const { data: existingLists, error: fetchError } = await supabase
+            .from('lists')
+            .select('id');
         
-        // Insert all current lists
+        if (fetchError) {
+            console.error('Error fetching existing lists:', fetchError);
+            return;
+        }
+        
+        const existingIds = existingLists.map(list => list.id);
+        const currentIds = Object.keys(lists);
+        
+        // Delete lists that no longer exist
+        const toDelete = existingIds.filter(id => !currentIds.includes(id));
+        if (toDelete.length > 0) {
+            const { error: deleteError } = await supabase
+                .from('lists')
+                .delete()
+                .in('id', toDelete);
+            
+            if (deleteError) {
+                console.error('Error deleting lists:', deleteError);
+            }
+        }
+        
+        // Upsert current lists
         const listsArray = Object.keys(lists).map(id => ({
             id: id,
             name: lists[id].name,
@@ -129,12 +176,14 @@ async function saveLists() {
         }));
         
         if (listsArray.length > 0) {
-            const { error } = await supabase
+            const { error: upsertError } = await supabase
                 .from('lists')
-                .insert(listsArray);
+                .upsert(listsArray);
             
-            if (error) {
-                console.error('Error saving lists:', error);
+            if (upsertError) {
+                console.error('Error saving lists:', upsertError);
+            } else {
+                console.log('Lists saved successfully');
             }
         }
     } catch (error) {
@@ -363,5 +412,19 @@ async function undoDelete() {
     }
 }
 
-// Initialize app
-init();
+// Initialize app when DOM and Supabase are ready
+function waitForSupabase() {
+    if (window.supabase) {
+        init();
+    } else {
+        console.log('Waiting for Supabase to load...');
+        setTimeout(waitForSupabase, 100);
+    }
+}
+
+// Start initialization when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', waitForSupabase);
+} else {
+    waitForSupabase();
+}
