@@ -1,5 +1,5 @@
 // Supabase Configuration
-const SUPABASE_URL = 'https://vqilyulfxwvgfrrywokoj.supabase.co';
+const SUPABASE_URL = 'https://vqilyulfxwvgfrrywkoj.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxaWx5dWxmeHd2Z2Zycnl3a29qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NTIxNTcsImV4cCI6MjA2NzEyODE1N30.1h8uHtc_d18MJIC3DNcKHdx52cwDACHnh8fRCslRinM';
 
 // Initialize Supabase (will be loaded from CDN)
