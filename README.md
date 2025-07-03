@@ -5,10 +5,11 @@ This is a shared lists application that works perfectly with Netlify hosting and
 ## **Features**
 - ✅ Create and manage multiple lists
 - ✅ Share lists with family members
-- ✅ Real-time sync across devices
-- ✅ Persistent cloud storage
+- ✅ **Real-time sync** - Changes appear instantly on all devices
+- ✅ Persistent cloud storage with automatic backups
 - ✅ Works on mobile and desktop
 - ✅ Completely free hosting
+- ✅ Undo functionality for accidental deletions
 
 ## **Quick Deploy (5 minutes)**
 
@@ -43,6 +44,10 @@ CREATE POLICY "Allow all operations" ON lists
     FOR ALL 
     USING (true)
     WITH CHECK (true);
+
+-- Enable real-time for instant sync between devices
+ALTER TABLE lists REPLICA IDENTITY FULL;
+ALTER PUBLICATION supabase_realtime ADD TABLE lists;
 ```
 
 3. **Click "Run"**
@@ -154,6 +159,26 @@ Your setup is production-ready! Optional enhancements:
 - Set up email notifications
 - Add list sharing via links
 - Create mobile app version
+
+## **Testing Real-Time Sync**
+
+Your app now has real-time synchronization! To test it:
+
+1. **Open your Netlify URL** in two browser tabs (or different devices)
+2. **Create a list** in one tab
+3. **Watch it appear instantly** in the other tab (no refresh needed!)
+4. **Add/delete items** in one tab and see them sync immediately
+5. **Check the console** - you should see "Real-time sync enabled"
+
+### **Real-Time Features**
+
+- ✅ **Instant list creation/deletion** across all devices
+- ✅ **Immediate item additions/removals** 
+- ✅ **Live list name changes**
+- ✅ **Automatic view switching** if someone deletes the list you're viewing
+- ✅ **No refresh required** - everything syncs instantly
+
+**Your app is now ready for seamless family sharing!** 🚀
 
 ## **Support**
 

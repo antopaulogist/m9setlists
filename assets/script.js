@@ -27,6 +27,7 @@ let currentListId = null;
 let lists = {};
 let lastDeleted = null;
 let undoTimeout = null;
+let realtimeChannel = null;
 
 // Initialize app
 async function init() {
@@ -42,6 +43,7 @@ async function init() {
         console.log('Supabase initialized successfully');
         
         await loadLists();
+        setupRealTimeSync();
         showListsView();
         bindEvents();
     } catch (error) {
@@ -56,6 +58,105 @@ function bindEvents() {
     listTitle.addEventListener('blur', saveListTitle);
     listTitle.addEventListener('keydown', handleTitleKeydown);
     todoForm.addEventListener('submit', addItem);
+}
+
+// Setup real-time synchronization
+function setupRealTimeSync() {
+    if (!supabase) {
+        console.error('Supabase not initialized for real-time');
+        return;
+    }
+    
+    try {
+        // Create a channel for real-time updates
+        realtimeChannel = supabase
+            .channel('lists_changes')
+            .on('postgres_changes', 
+                { 
+                    event: '*', 
+                    schema: 'public', 
+                    table: 'lists' 
+                }, 
+                handleRealTimeChange
+            )
+            .subscribe((status) => {
+                console.log('Real-time subscription status:', status);
+            });
+            
+        console.log('Real-time sync enabled');
+    } catch (error) {
+        console.error('Error setting up real-time sync:', error);
+    }
+}
+
+// Handle real-time database changes
+function handleRealTimeChange(payload) {
+    console.log('Real-time change received:', payload);
+    
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+    
+    switch (eventType) {
+        case 'INSERT':
+            // New list added
+            lists[newRecord.id] = {
+                name: newRecord.name,
+                items: newRecord.items,
+                created: newRecord.created
+            };
+            updateUI();
+            break;
+            
+        case 'UPDATE':
+            // List modified
+            if (lists[newRecord.id]) {
+                lists[newRecord.id] = {
+                    name: newRecord.name,
+                    items: newRecord.items,
+                    created: newRecord.created
+                };
+                updateUI();
+            }
+            break;
+            
+        case 'DELETE':
+            // List deleted
+            if (oldRecord && lists[oldRecord.id]) {
+                delete lists[oldRecord.id];
+                
+                // If we're currently viewing the deleted list, go back to lists view
+                if (currentListId === oldRecord.id) {
+                    showListsView();
+                } else {
+                    updateUI();
+                }
+            }
+            break;
+    }
+}
+
+// Update UI based on current view
+function updateUI() {
+    // Add a small delay to batch multiple rapid changes
+    clearTimeout(updateUI.timeout);
+    updateUI.timeout = setTimeout(() => {
+        if (currentListId) {
+            // We're in list view - update the current list
+            if (lists[currentListId]) {
+                renderListItems();
+                // Update list title if it changed
+                const list = lists[currentListId];
+                if (listTitle.textContent !== list.name) {
+                    listTitle.textContent = list.name;
+                }
+            } else {
+                // Current list was deleted, go back to lists view
+                showListsView();
+            }
+        } else {
+            // We're in lists overview - update the lists grid
+            renderLists();
+        }
+    }, 100);
 }
 
 // Load lists from Supabase
@@ -423,6 +524,14 @@ function waitForSupabase() {
         setTimeout(waitForSupabase, 100);
     }
 }
+
+// Cleanup real-time connection when page unloads
+window.addEventListener('beforeunload', () => {
+    if (realtimeChannel) {
+        realtimeChannel.unsubscribe();
+        console.log('Real-time connection closed');
+    }
+});
 
 // Start initialization when DOM is ready
 if (document.readyState === 'loading') {
