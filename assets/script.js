@@ -20,8 +20,8 @@ let lastDeleted = null;
 let undoTimeout = null;
 
 // Initialize app
-function init() {
-    loadLists();
+async function init() {
+    await loadLists();
     showListsView();
     bindEvents();
 }
@@ -35,30 +35,23 @@ function bindEvents() {
     todoForm.addEventListener('submit', addItem);
 }
 
-// Load lists from localStorage
-function loadLists() {
+// Load lists from server
+async function loadLists() {
     try {
-        const savedLists = localStorage.getItem('allLists');
-        if (savedLists) {
-            lists = JSON.parse(savedLists);
+        const response = await fetch('/api/lists');
+        if (response.ok) {
+            lists = await response.json();
         } else {
-            // Check for old format data and migrate
-            const oldItems = localStorage.getItem('shoppingItems');
-            if (oldItems) {
-                const items = JSON.parse(oldItems);
-                if (items.length > 0) {
-                    // Create a "Shopping List" from old data
-                    const listId = Date.now().toString();
-                    lists[listId] = {
-                        name: 'Shopping List',
-                        items: items,
-                        created: Date.now()
-                    };
-                    saveLists();
-                    // Remove old data
-                    localStorage.removeItem('shoppingItems');
-                }
-            }
+            console.error('Failed to load lists from server');
+            lists = {};
+        }
+        
+        // Check for old localStorage data and migrate it
+        const savedLists = localStorage.getItem('allLists');
+        const oldItems = localStorage.getItem('shoppingItems');
+        
+        if (savedLists || oldItems) {
+            await migrateLocalStorageData(savedLists, oldItems);
         }
     } catch (error) {
         console.error('Error loading lists:', error);
@@ -66,17 +59,62 @@ function loadLists() {
     }
 }
 
-// Save lists to localStorage
-function saveLists() {
+// Migrate old localStorage data to server
+async function migrateLocalStorageData(savedLists, oldItems) {
     try {
-        localStorage.setItem('allLists', JSON.stringify(lists));
+        let hasData = false;
+        
+        if (savedLists) {
+            const localLists = JSON.parse(savedLists);
+            Object.assign(lists, localLists);
+            hasData = true;
+        } else if (oldItems) {
+            const items = JSON.parse(oldItems);
+            if (items.length > 0) {
+                const listId = Date.now().toString();
+                lists[listId] = {
+                    name: 'Shopping List',
+                    items: items,
+                    created: Date.now()
+                };
+                hasData = true;
+            }
+        }
+        
+        if (hasData) {
+            await saveLists();
+            // Clear localStorage after successful migration
+            localStorage.removeItem('allLists');
+            localStorage.removeItem('shoppingItems');
+            console.log('Successfully migrated data to server');
+        }
+    } catch (error) {
+        console.error('Error migrating localStorage data:', error);
+    }
+}
+
+// Save lists to server
+async function saveLists() {
+    try {
+        const response = await fetch('/api/lists', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(lists)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to save lists to server');
+        }
     } catch (error) {
         console.error('Error saving lists:', error);
+        // Optionally show user notification about save failure
     }
 }
 
 // Create new list
-function createList(e) {
+async function createList(e) {
     e.preventDefault();
     const listName = newListInput.value.trim();
     if (!listName) return;
@@ -88,7 +126,7 @@ function createList(e) {
         created: Date.now()
     };
 
-    saveLists();
+    await saveLists();
     renderLists();
     newListInput.value = '';
     newListInput.focus();
@@ -117,20 +155,25 @@ function renderLists() {
         
         const listContent = document.createElement('div');
         listContent.className = 'list-card-content';
-        listContent.innerHTML = `
-            <h3>${list.name}</h3>
-            <p>${list.items.length} items</p>
-        `;
+        
+        const h3 = document.createElement('h3');
+        h3.textContent = list.name;
+        
+        const p = document.createElement('p');
+        p.textContent = `${list.items.length} items`;
+        
+        listContent.appendChild(h3);
+        listContent.appendChild(p);
         listContent.addEventListener('click', () => showListView(listId));
         
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'list-delete-btn';
         deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-label="Delete"><path d="M3 6h18" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#fff" stroke-width="2" stroke-linecap="round"/><rect x="5" y="6" width="14" height="14" rx="2" fill="none" stroke="#fff" stroke-width="2"/><path d="M10 11v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M14 11v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
-        deleteBtn.addEventListener('click', (e) => {
+        deleteBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             if (confirm(`Are you sure you want to delete "${list.name}"?`)) {
                 delete lists[listId];
-                saveLists();
+                await saveLists();
                 renderLists();
             }
         });
@@ -163,12 +206,12 @@ function showListView(listId) {
 }
 
 // Save list title
-function saveListTitle() {
+async function saveListTitle() {
     if (!currentListId) return;
     const newTitle = listTitle.textContent.trim();
     if (newTitle) {
         lists[currentListId].name = newTitle;
-        saveLists();
+        await saveLists();
     }
 }
 
@@ -183,7 +226,7 @@ function handleTitleKeydown(e) {
 
 
 // Add item to current list
-function addItem(e) {
+async function addItem(e) {
     e.preventDefault();
     if (!currentListId) return;
     
@@ -192,7 +235,7 @@ function addItem(e) {
 
     // Add new item to the end (it will appear at top due to reverse display)
     lists[currentListId].items.push(item);
-    saveLists();
+    await saveLists();
     renderListItems();
     todoInput.value = '';
     todoInput.focus();
@@ -237,9 +280,9 @@ function createDeleteButton(item, index, li) {
     delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-label="Delete"><path d="M3 6h18" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#fff" stroke-width="2" stroke-linecap="round"/><rect x="5" y="6" width="14" height="14" rx="2" fill="none" stroke="#fff" stroke-width="2"/><path d="M10 11v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M14 11v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
     delBtn.className = 'delete-btn';
     delBtn.type = 'button';
-    delBtn.onclick = function() {
+    delBtn.onclick = async function() {
         lists[currentListId].items.splice(index, 1);
-        saveLists();
+        await saveLists();
         renderListItems();
         showUndo(item, index);
     };
@@ -274,14 +317,14 @@ function showUndo(item, index) {
 }
 
 // Undo delete
-function undoDelete() {
+async function undoDelete() {
     if (!lastDeleted || !currentListId) return;
     
     try {
         const { item, index } = lastDeleted;
         // Restore item at its original position
         lists[currentListId].items.splice(index, 0, item);
-        saveLists();
+        await saveLists();
         renderListItems();
         
         document.getElementById('undo-div').style.display = 'none';
