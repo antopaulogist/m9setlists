@@ -52,7 +52,7 @@ CREATE POLICY "Allow all operations" ON lists
 1. **Go to "Settings" → "API"**
 2. **Copy these values:**
    - **Project URL**: `https://your-project-id.supabase.co`
-   - **Anon key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+   - **Anon key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (long string)
 
 ### **Step 4: Update Your Code**
 
@@ -135,6 +135,17 @@ Your lists are stored in Supabase:
 - **Netlify**: Free (unlimited personal projects)
 - **Supabase**: Free (up to 50,000 database rows)
 - **Your usage**: Well within free limits
+
+## **Security Note**
+
+Your Supabase credentials are visible in the public code, but this is intentional and safe:
+
+- **Anon Key**: Designed specifically for public client-side use
+- **Row Level Security**: Database access controlled by policies, not key secrecy
+- **Limited Permissions**: Anon key can only perform operations you've explicitly allowed
+- **No Sensitive Data**: Your lists app doesn't store personal/financial information
+
+This is the standard security model for client-side applications using Supabase.
 
 ## **What's Next?**
 
