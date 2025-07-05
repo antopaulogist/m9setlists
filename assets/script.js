@@ -447,18 +447,15 @@ function renderSongs() {
         li.draggable = true;
         li.dataset.index = index;
         
-        // Add drag handle
-        const dragHandle = document.createElement('div');
-        dragHandle.className = 'drag-handle';
-        dragHandle.innerHTML = '⋮⋮';
-        li.appendChild(dragHandle);
-        
         const span = document.createElement('span');
         span.textContent = song;
         li.appendChild(span);
         
-        const delBtn = createDeleteButton(song, index, li);
-        li.appendChild(delBtn);
+        // Add drag handle (now on the right)
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'drag-handle';
+        dragHandle.innerHTML = '⋮⋮';
+        li.appendChild(dragHandle);
         
         // Drag and drop event listeners
         li.addEventListener('dragstart', handleDragStart);
@@ -466,8 +463,144 @@ function renderSongs() {
         li.addEventListener('drop', handleDrop);
         li.addEventListener('dragend', handleDragEnd);
         
+        // Swipe to delete event listeners
+        addSwipeToDeleteListeners(li, song, index);
+        
         todoList.appendChild(li);
     });
+}
+
+// Add swipe to delete functionality
+function addSwipeToDeleteListeners(element, song, index) {
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let isDragging = false;
+    let isVerticalScroll = false;
+    
+    // Touch events for mobile
+    element.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isDragging = true;
+        isVerticalScroll = false;
+        element.classList.add('swiping');
+    });
+    
+    element.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        
+        currentX = e.touches[0].clientX;
+        const currentY = e.touches[0].clientY;
+        const deltaX = currentX - startX;
+        const deltaY = currentY - startY;
+        
+        // Determine if this is a vertical scroll
+        if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) {
+            isVerticalScroll = true;
+            element.classList.remove('swiping');
+            element.style.transform = '';
+            return;
+        }
+        
+        // Prevent vertical scrolling during horizontal swipe
+        if (Math.abs(deltaX) > 10 && !isVerticalScroll) {
+            e.preventDefault();
+        }
+        
+        // Only allow left swipe (negative deltaX)
+        if (deltaX < 0 && !isVerticalScroll) {
+            element.style.transform = `translateX(${deltaX}px)`;
+            
+            // Change background color when swiping far enough
+            if (Math.abs(deltaX) > 100) {
+                element.classList.add('swipe-left');
+            } else {
+                element.classList.remove('swipe-left');
+            }
+        }
+    });
+    
+    element.addEventListener('touchend', (e) => {
+        if (!isDragging || isVerticalScroll) return;
+        
+        const deltaX = currentX - startX;
+        
+        // Delete if swiped left more than 100px
+        if (Math.abs(deltaX) > 100 && deltaX < 0) {
+            deleteSong(song, index);
+        } else {
+            // Reset position
+            element.style.transform = '';
+            element.classList.remove('swipe-left');
+        }
+        
+        element.classList.remove('swiping');
+        isDragging = false;
+    });
+    
+    // Mouse events for desktop
+    element.addEventListener('mousedown', (e) => {
+        // Only start swipe if clicking on the song text area (not drag handle)
+        if (e.target.classList.contains('drag-handle') || e.target.closest('.drag-handle')) {
+            return;
+        }
+        
+        startX = e.clientX;
+        isDragging = true;
+        element.classList.add('swiping');
+        
+        const mouseMoveHandler = (e) => {
+            if (!isDragging) return;
+            
+            currentX = e.clientX;
+            const deltaX = currentX - startX;
+            
+            // Only allow left swipe (negative deltaX)
+            if (deltaX < 0) {
+                element.style.transform = `translateX(${deltaX}px)`;
+                
+                // Change background color when swiping far enough
+                if (Math.abs(deltaX) > 100) {
+                    element.classList.add('swipe-left');
+                } else {
+                    element.classList.remove('swipe-left');
+                }
+            }
+        };
+        
+        const mouseUpHandler = (e) => {
+            if (!isDragging) return;
+            
+            const deltaX = currentX - startX;
+            
+            // Delete if swiped left more than 100px
+            if (Math.abs(deltaX) > 100 && deltaX < 0) {
+                deleteSong(song, index);
+            } else {
+                // Reset position
+                element.style.transform = '';
+                element.classList.remove('swipe-left');
+            }
+            
+            element.classList.remove('swiping');
+            isDragging = false;
+            
+            document.removeEventListener('mousemove', mouseMoveHandler);
+            document.removeEventListener('mouseup', mouseUpHandler);
+        };
+        
+        document.addEventListener('mousemove', mouseMoveHandler);
+        document.addEventListener('mouseup', mouseUpHandler);
+    });
+}
+
+// Delete song function
+async function deleteSong(song, index) {
+    setlists[currentListId].songs.splice(index, 1);
+    await saveSetlists();
+    renderSongs();
+    showUndo(song, index);
 }
 
 // Drag and drop handlers
@@ -522,22 +655,6 @@ function handleDragEnd(e) {
     e.target.classList.remove('dragging');
     document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
     draggedElement = null;
-}
-
-// Create delete button
-function createDeleteButton(song, index, li) {
-    const delBtn = document.createElement('button');
-    delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-label="Delete"><path d="M3 6h18" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#fff" stroke-width="2" stroke-linecap="round"/><rect x="5" y="6" width="14" height="14" rx="2" fill="none" stroke="#fff" stroke-width="2"/><path d="M10 11v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M14 11v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
-    delBtn.className = 'delete-btn';
-    delBtn.type = 'button';
-    delBtn.onclick = async function(e) {
-        e.stopPropagation();
-        setlists[currentListId].songs.splice(index, 1);
-        await saveSetlists();
-        renderSongs();
-        showUndo(song, index);
-    };
-    return delBtn;
 }
 
 // Show undo notification
