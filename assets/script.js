@@ -451,7 +451,7 @@ function renderSongs() {
         
         const upBtn = document.createElement('button');
         upBtn.className = 'move-btn';
-        upBtn.innerHTML = '^';
+        upBtn.innerHTML = '↑';
         upBtn.title = 'Move up';
         upBtn.disabled = index === 0;
         upBtn.addEventListener('click', () => moveSong(index, index - 1));
@@ -470,7 +470,7 @@ function renderSongs() {
         
         const downBtn = document.createElement('button');
         downBtn.className = 'move-btn';
-        downBtn.innerHTML = 'v';
+        downBtn.innerHTML = '↓';
         downBtn.title = 'Move down';
         downBtn.disabled = index === setlist.songs.length - 1;
         downBtn.addEventListener('click', () => moveSong(index, index + 1));
