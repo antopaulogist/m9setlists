@@ -1,8 +1,7 @@
 // Supabase Configuration
-// Note: These credentials are safe to be public - the anon key is designed for client-side use
-// and access is controlled by Row Level Security policies in the database
-const SUPABASE_URL = 'https://vqilyulfxwvgfrrywkoj.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZxaWx5dWxmeHd2Z2Zycnl3a29qIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NTIxNTcsImV4cCI6MjA2NzEyODE1N30.1h8uHtc_d18MJIC3DNcKHdx52cwDACHnh8fRCslRinM';
+// NOTE: Replace these with your actual Supabase credentials
+const SUPABASE_URL = 'https://YOUR-PROJECT-ID.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY-HERE';
 
 // Initialize Supabase (will be loaded from CDN)
 let supabase;
@@ -24,10 +23,11 @@ const emptyState = document.getElementById('empty-state');
 
 // State
 let currentListId = null;
-let lists = {};
+let setlists = {};
 let lastDeleted = null;
 let undoTimeout = null;
 let realtimeChannel = null;
+let draggedElement = null;
 
 // Initialize app
 async function init() {
@@ -42,7 +42,7 @@ async function init() {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('Supabase initialized successfully');
         
-        await loadLists();
+        await loadSetlists();
         setupRealTimeSync();
         showListsView();
         bindEvents();
@@ -53,11 +53,11 @@ async function init() {
 
 // Event listeners
 function bindEvents() {
-    newListForm.addEventListener('submit', createList);
+    newListForm.addEventListener('submit', createSetlist);
     backBtn.addEventListener('click', showListsView);
-    listTitle.addEventListener('blur', saveListTitle);
+    listTitle.addEventListener('blur', saveSetlistTitle);
     listTitle.addEventListener('keydown', handleTitleKeydown);
-    todoForm.addEventListener('submit', addItem);
+    todoForm.addEventListener('submit', addSong);
 }
 
 // Setup real-time synchronization
@@ -70,12 +70,12 @@ function setupRealTimeSync() {
     try {
         // Create a channel for real-time updates
         realtimeChannel = supabase
-            .channel('lists_changes')
+            .channel('setlists_changes')
             .on('postgres_changes', 
                 { 
                     event: '*', 
                     schema: 'public', 
-                    table: 'lists' 
+                    table: 'setlists' 
                 }, 
                 handleRealTimeChange
             )
@@ -97,21 +97,21 @@ function handleRealTimeChange(payload) {
     
     switch (eventType) {
         case 'INSERT':
-            // New list added
-            lists[newRecord.id] = {
+            // New setlist added
+            setlists[newRecord.id] = {
                 name: newRecord.name,
-                items: newRecord.items,
+                songs: newRecord.songs,
                 created: newRecord.created
             };
             updateUI();
             break;
             
         case 'UPDATE':
-            // List modified
-            if (lists[newRecord.id]) {
-                lists[newRecord.id] = {
+            // Setlist modified
+            if (setlists[newRecord.id]) {
+                setlists[newRecord.id] = {
                     name: newRecord.name,
-                    items: newRecord.items,
+                    songs: newRecord.songs,
                     created: newRecord.created
                 };
                 updateUI();
@@ -119,11 +119,11 @@ function handleRealTimeChange(payload) {
             break;
             
         case 'DELETE':
-            // List deleted
-            if (oldRecord && lists[oldRecord.id]) {
-                delete lists[oldRecord.id];
+            // Setlist deleted
+            if (oldRecord && setlists[oldRecord.id]) {
+                delete setlists[oldRecord.id];
                 
-                // If we're currently viewing the deleted list, go back to lists view
+                // If we're currently viewing the deleted setlist, go back to setlists view
                 if (currentListId === oldRecord.id) {
                     showListsView();
                 } else {
@@ -140,51 +140,51 @@ function updateUI() {
     clearTimeout(updateUI.timeout);
     updateUI.timeout = setTimeout(() => {
         if (currentListId) {
-            // We're in list view - update the current list
-            if (lists[currentListId]) {
-                renderListItems();
-                // Update list title if it changed
-                const list = lists[currentListId];
-                if (listTitle.textContent !== list.name) {
-                    listTitle.textContent = list.name;
+            // We're in setlist view - update the current setlist
+            if (setlists[currentListId]) {
+                renderSongs();
+                // Update setlist title if it changed
+                const setlist = setlists[currentListId];
+                if (listTitle.textContent !== setlist.name) {
+                    listTitle.textContent = setlist.name;
                 }
             } else {
-                // Current list was deleted, go back to lists view
+                // Current setlist was deleted, go back to setlists view
                 showListsView();
             }
         } else {
-            // We're in lists overview - update the lists grid
-            renderLists();
+            // We're in setlists overview - update the setlists grid
+            renderSetlists();
         }
     }, 100);
 }
 
-// Load lists from Supabase
-async function loadLists() {
+// Load setlists from Supabase
+async function loadSetlists() {
     if (!supabase) {
         console.error('Supabase not initialized');
-        lists = {};
+        setlists = {};
         return;
     }
     
     try {
-        console.log('Loading lists from Supabase...');
+        console.log('Loading setlists from Supabase...');
         const { data, error } = await supabase
-            .from('lists')
+            .from('setlists')
             .select('*');
         
         if (error) {
-            console.error('Error loading lists:', error);
-            lists = {};
+            console.error('Error loading setlists:', error);
+            setlists = {};
         } else {
-            console.log('Lists loaded successfully:', data);
+            console.log('Setlists loaded successfully:', data);
             // Convert array to object format
-            lists = {};
-            data.forEach(list => {
-                lists[list.id] = {
-                    name: list.name,
-                    items: list.items,
-                    created: list.created
+            setlists = {};
+            data.forEach(setlist => {
+                setlists[setlist.id] = {
+                    name: setlist.name,
+                    songs: setlist.songs,
+                    created: setlist.created
                 };
             });
         }
@@ -197,8 +197,8 @@ async function loadLists() {
             await migrateLocalStorageData(savedLists, oldItems);
         }
     } catch (error) {
-        console.error('Error loading lists:', error);
-        lists = {};
+        console.error('Error loading setlists:', error);
+        setlists = {};
     }
 }
 
@@ -209,15 +209,21 @@ async function migrateLocalStorageData(savedLists, oldItems) {
         
         if (savedLists) {
             const localLists = JSON.parse(savedLists);
-            Object.assign(lists, localLists);
+            Object.keys(localLists).forEach(id => {
+                setlists[id] = {
+                    name: localLists[id].name,
+                    songs: localLists[id].items || [],
+                    created: localLists[id].created
+                };
+            });
             hasData = true;
         } else if (oldItems) {
             const items = JSON.parse(oldItems);
             if (items.length > 0) {
                 const listId = Date.now().toString();
-                lists[listId] = {
-                    name: 'Shopping List',
-                    items: items,
+                setlists[listId] = {
+                    name: 'Main Setlist',
+                    songs: items,
                     created: Date.now()
                 };
                 hasData = true;
@@ -225,7 +231,7 @@ async function migrateLocalStorageData(savedLists, oldItems) {
         }
         
         if (hasData) {
-            await saveLists();
+            await saveSetlists();
             // Clear localStorage after successful migration
             localStorage.removeItem('allLists');
             localStorage.removeItem('shoppingItems');
@@ -236,88 +242,88 @@ async function migrateLocalStorageData(savedLists, oldItems) {
     }
 }
 
-// Save lists to Supabase
-async function saveLists() {
+// Save setlists to Supabase
+async function saveSetlists() {
     if (!supabase) {
         console.error('Supabase not initialized');
         return;
     }
     
     try {
-        // Get current lists from database
-        const { data: existingLists, error: fetchError } = await supabase
-            .from('lists')
+        // Get current setlists from database
+        const { data: existingSetlists, error: fetchError } = await supabase
+            .from('setlists')
             .select('id');
         
         if (fetchError) {
-            console.error('Error fetching existing lists:', fetchError);
+            console.error('Error fetching existing setlists:', fetchError);
             return;
         }
         
-        const existingIds = existingLists.map(list => list.id);
-        const currentIds = Object.keys(lists);
+        const existingIds = existingSetlists.map(setlist => setlist.id);
+        const currentIds = Object.keys(setlists);
         
-        // Delete lists that no longer exist
+        // Delete setlists that no longer exist
         const toDelete = existingIds.filter(id => !currentIds.includes(id));
         if (toDelete.length > 0) {
             const { error: deleteError } = await supabase
-                .from('lists')
+                .from('setlists')
                 .delete()
                 .in('id', toDelete);
             
             if (deleteError) {
-                console.error('Error deleting lists:', deleteError);
+                console.error('Error deleting setlists:', deleteError);
             }
         }
         
-        // Upsert current lists
-        const listsArray = Object.keys(lists).map(id => ({
+        // Upsert current setlists
+        const setlistsArray = Object.keys(setlists).map(id => ({
             id: id,
-            name: lists[id].name,
-            items: lists[id].items,
-            created: lists[id].created
+            name: setlists[id].name,
+            songs: setlists[id].songs,
+            created: setlists[id].created
         }));
         
-        if (listsArray.length > 0) {
+        if (setlistsArray.length > 0) {
             const { error: upsertError } = await supabase
-                .from('lists')
-                .upsert(listsArray);
+                .from('setlists')
+                .upsert(setlistsArray);
             
             if (upsertError) {
-                console.error('Error saving lists:', upsertError);
+                console.error('Error saving setlists:', upsertError);
             } else {
-                console.log('Lists saved successfully');
+                console.log('Setlists saved successfully');
             }
         }
     } catch (error) {
-        console.error('Error saving lists:', error);
+        console.error('Error saving setlists:', error);
     }
 }
 
-// Create new list
-async function createList(e) {
+// Create new setlist
+async function createSetlist(e) {
     e.preventDefault();
-    const listName = newListInput.value.trim();
-    if (!listName) return;
+    const setlistName = newListInput.value.trim();
+    if (!setlistName) return;
 
-    const listId = Date.now().toString();
-    lists[listId] = {
-        name: listName,
-        items: [],
+    const setlistId = Date.now().toString();
+    setlists[setlistId] = {
+        name: setlistName,
+        songs: [],
         created: Date.now()
     };
 
-    await saveLists();
-    renderLists();
+    await saveSetlists();
+    renderSetlists();
     newListInput.value = '';
     newListInput.focus();
 }
 
-// Render all lists
-function renderLists() {
-    const listIds = Object.keys(lists);
+// Render all setlists
+function renderSetlists() {
+    const setlistIds = Object.keys(setlists);
     
-    if (listIds.length === 0) {
+    if (setlistIds.length === 0) {
         noListsState.style.display = 'block';
         listsGrid.innerHTML = '';
         return;
@@ -326,73 +332,73 @@ function renderLists() {
     noListsState.style.display = 'none';
     listsGrid.innerHTML = '';
 
-    // Sort lists by creation time (newest first)
-    listIds.sort((a, b) => lists[b].created - lists[a].created);
+    // Sort setlists by creation time (oldest first)
+    setlistIds.sort((a, b) => setlists[a].created - setlists[b].created);
 
-    listIds.forEach(listId => {
-        const list = lists[listId];
-        const listCard = document.createElement('div');
-        listCard.className = 'list-card';
+    setlistIds.forEach(setlistId => {
+        const setlist = setlists[setlistId];
+        const setlistCard = document.createElement('div');
+        setlistCard.className = 'list-card';
         
-        const listContent = document.createElement('div');
-        listContent.className = 'list-card-content';
+        const setlistContent = document.createElement('div');
+        setlistContent.className = 'list-card-content';
         
         const h3 = document.createElement('h3');
-        h3.textContent = list.name;
+        h3.textContent = setlist.name;
         
         const p = document.createElement('p');
-        p.textContent = `${list.items.length} items`;
+        p.textContent = `${setlist.songs.length} songs`;
         
-        listContent.appendChild(h3);
-        listContent.appendChild(p);
-        listContent.addEventListener('click', () => showListView(listId));
+        setlistContent.appendChild(h3);
+        setlistContent.appendChild(p);
+        setlistContent.addEventListener('click', () => showSetlistView(setlistId));
         
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'list-delete-btn';
         deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-label="Delete"><path d="M3 6h18" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#fff" stroke-width="2" stroke-linecap="round"/><rect x="5" y="6" width="14" height="14" rx="2" fill="none" stroke="#fff" stroke-width="2"/><path d="M10 11v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M14 11v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
         deleteBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
-            if (confirm(`Are you sure you want to delete "${list.name}"?`)) {
-                delete lists[listId];
-                await saveLists();
-                renderLists();
+            if (confirm(`Are you sure you want to delete "${setlist.name}"?`)) {
+                delete setlists[setlistId];
+                await saveSetlists();
+                renderSetlists();
             }
         });
         
-        listCard.appendChild(listContent);
-        listCard.appendChild(deleteBtn);
-        listsGrid.appendChild(listCard);
+        setlistCard.appendChild(setlistContent);
+        setlistCard.appendChild(deleteBtn);
+        listsGrid.appendChild(setlistCard);
     });
 }
 
-// Show lists overview
+// Show setlists overview
 function showListsView() {
     listsView.classList.remove('hidden');
     listView.classList.add('hidden');
     currentListId = null;
-    renderLists();
+    renderSetlists();
 }
 
-// Show individual list
-function showListView(listId) {
-    currentListId = listId;
-    const list = lists[listId];
+// Show individual setlist
+function showSetlistView(setlistId) {
+    currentListId = setlistId;
+    const setlist = setlists[setlistId];
     
-    listTitle.textContent = list.name;
+    listTitle.textContent = setlist.name;
     listsView.classList.add('hidden');
     listView.classList.remove('hidden');
     
-    renderListItems();
+    renderSongs();
     todoInput.focus();
 }
 
-// Save list title
-async function saveListTitle() {
+// Save setlist title
+async function saveSetlistTitle() {
     if (!currentListId) return;
     const newTitle = listTitle.textContent.trim();
     if (newTitle) {
-        lists[currentListId].name = newTitle;
-        await saveLists();
+        setlists[currentListId].name = newTitle;
+        await saveSetlists();
     }
 }
 
@@ -404,77 +410,140 @@ function handleTitleKeydown(e) {
     }
 }
 
-
-
-// Add item to current list
-async function addItem(e) {
+// Add song to current setlist
+async function addSong(e) {
     e.preventDefault();
     if (!currentListId) return;
     
-    const item = todoInput.value.trim();
-    if (!item) return;
+    const song = todoInput.value.trim();
+    if (!song) return;
 
-    // Add new item to the end (it will appear at top due to reverse display)
-    lists[currentListId].items.push(item);
-    await saveLists();
-    renderListItems();
+    // Add new song to the end
+    setlists[currentListId].songs.push(song);
+    await saveSetlists();
+    renderSongs();
     todoInput.value = '';
     todoInput.focus();
 }
 
-// Render items in current list
-function renderListItems() {
+// Render songs in current setlist
+function renderSongs() {
     if (!currentListId) return;
     
-    const list = lists[currentListId];
+    const setlist = setlists[currentListId];
     todoList.innerHTML = '';
     
-    if (list.items.length === 0) {
+    if (setlist.songs.length === 0) {
         emptyState.style.display = 'block';
         return;
     }
 
     emptyState.style.display = 'none';
     
-    // Display items in reverse order (newest first)
-    const reversedItems = [...list.items].reverse();
-    
-    reversedItems.forEach((item, reverseIndex) => {
-        // Calculate the original index for deletion
-        const originalIndex = list.items.length - 1 - reverseIndex;
-        
+    // Display songs in their current order
+    setlist.songs.forEach((song, index) => {
         const li = document.createElement('li');
+        li.draggable = true;
+        li.dataset.index = index;
+        
+        // Add drag handle
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'drag-handle';
+        dragHandle.innerHTML = '⋮⋮';
+        li.appendChild(dragHandle);
+        
         const span = document.createElement('span');
-        span.textContent = item;
+        span.textContent = song;
         li.appendChild(span);
         
-        const delBtn = createDeleteButton(item, originalIndex, li);
+        const delBtn = createDeleteButton(song, index, li);
         li.appendChild(delBtn);
+        
+        // Drag and drop event listeners
+        li.addEventListener('dragstart', handleDragStart);
+        li.addEventListener('dragover', handleDragOver);
+        li.addEventListener('drop', handleDrop);
+        li.addEventListener('dragend', handleDragEnd);
         
         todoList.appendChild(li);
     });
 }
 
+// Drag and drop handlers
+function handleDragStart(e) {
+    draggedElement = e.target;
+    e.target.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', e.target.outerHTML);
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    
+    const draggingElement = document.querySelector('.dragging');
+    if (draggingElement && e.target !== draggingElement) {
+        const targetLi = e.target.closest('li');
+        if (targetLi && targetLi !== draggingElement) {
+            targetLi.classList.add('drag-over');
+        }
+    }
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    
+    const targetLi = e.target.closest('li');
+    if (targetLi && draggedElement && targetLi !== draggedElement) {
+        const draggedIndex = parseInt(draggedElement.dataset.index);
+        const targetIndex = parseInt(targetLi.dataset.index);
+        
+        // Reorder songs array
+        const setlist = setlists[currentListId];
+        const draggedSong = setlist.songs[draggedIndex];
+        
+        // Remove from old position
+        setlist.songs.splice(draggedIndex, 1);
+        
+        // Insert at new position
+        const newTargetIndex = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
+        setlist.songs.splice(newTargetIndex, 0, draggedSong);
+        
+        saveSetlists();
+        renderSongs();
+    }
+    
+    // Clean up drag over states
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+function handleDragEnd(e) {
+    e.target.classList.remove('dragging');
+    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+    draggedElement = null;
+}
+
 // Create delete button
-function createDeleteButton(item, index, li) {
+function createDeleteButton(song, index, li) {
     const delBtn = document.createElement('button');
     delBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-label="Delete"><path d="M3 6h18" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#fff" stroke-width="2" stroke-linecap="round"/><rect x="5" y="6" width="14" height="14" rx="2" fill="none" stroke="#fff" stroke-width="2"/><path d="M10 11v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M14 11v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
     delBtn.className = 'delete-btn';
     delBtn.type = 'button';
-    delBtn.onclick = async function() {
-        lists[currentListId].items.splice(index, 1);
-        await saveLists();
-        renderListItems();
-        showUndo(item, index);
+    delBtn.onclick = async function(e) {
+        e.stopPropagation();
+        setlists[currentListId].songs.splice(index, 1);
+        await saveSetlists();
+        renderSongs();
+        showUndo(song, index);
     };
     return delBtn;
 }
 
 // Show undo notification
-function showUndo(item, index) {
+function showUndo(song, index) {
     try {
         clearTimeout(undoTimeout);
-        lastDeleted = { item, index };
+        lastDeleted = { item: song, index };
         
         let undoDiv = document.getElementById('undo-div');
         if (!undoDiv) {
@@ -503,10 +572,10 @@ async function undoDelete() {
     
     try {
         const { item, index } = lastDeleted;
-        // Restore item at its original position
-        lists[currentListId].items.splice(index, 0, item);
-        await saveLists();
-        renderListItems();
+        // Restore song at its original position
+        setlists[currentListId].songs.splice(index, 0, item);
+        await saveSetlists();
+        renderSongs();
         
         document.getElementById('undo-div').style.display = 'none';
         lastDeleted = null;

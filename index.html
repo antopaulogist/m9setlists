@@ -3,43 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lists</title>
+    <title>Mickey 9s Setlist</title>
     <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
     <div id="app">
         <!-- Main Lists Overview -->
         <div id="lists-view" class="view">
-            <h1>Lists</h1>
+            <h1>Mickey 9s Setlist</h1>
             <div id="lists-container">
                 <form id="new-list-form" autocomplete="off">
                     <div id="input-row">
-                        <label for="new-list-input" class="visually-hidden">Create a new list</label>
-                        <input type="text" id="new-list-input" placeholder="Create a new list..." maxlength="50">
-                        <button id="create-list-btn" type="submit" aria-label="Create list">+</button>
+                        <label for="new-list-input" class="visually-hidden">Create a new setlist</label>
+                        <input type="text" id="new-list-input" placeholder="Create a new setlist..." maxlength="50">
+                        <button id="create-list-btn" type="submit" aria-label="Create setlist">+</button>
                     </div>
                 </form>
                 <div id="lists-grid"></div>
-                <p id="no-lists-state" class="empty-state">No lists yet!</p>
+                <p id="no-lists-state" class="empty-state">No setlists yet!</p>
             </div>
         </div>
 
         <!-- Individual List View -->
         <div id="list-view" class="view hidden">
             <div id="list-header">
-                <button id="back-btn" aria-label="Back to lists">←</button>
-                <h1 id="list-title" contenteditable="true">List Name</h1>
+                <button id="back-btn" aria-label="Back to setlists">←</button>
+                <h1 id="list-title" contenteditable="true">Setlist Name</h1>
             </div>
             <div id="todo-container">
                 <form id="todo-form" autocomplete="off">
                     <div id="input-row">
-                        <label for="todo-input" class="visually-hidden">Add a new item</label>
-                        <input type="text" id="todo-input" placeholder="Add a new item..." maxlength="100">
-                        <button id="addBtn" type="submit" aria-label="Add item">+</button>
+                        <label for="todo-input" class="visually-hidden">Add a new song</label>
+                        <input type="text" id="todo-input" placeholder="Add a new song..." maxlength="100">
+                        <button id="addBtn" type="submit" aria-label="Add song">+</button>
                     </div>
                 </form>
                 <ul id="todo-list" aria-live="polite"></ul>
-                <p id="empty-state" class="empty-state">No items yet!</p>
+                <p id="empty-state" class="empty-state">No songs yet!</p>
             </div>
         </div>
     </div>
