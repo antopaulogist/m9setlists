@@ -28,7 +28,6 @@ let setlists = {};
 let lastDeleted = null;
 let undoTimeout = null;
 let realtimeChannel = null;
-let draggedElement = null;
 
 // Initialize app
 async function init() {
@@ -444,30 +443,113 @@ function renderSongs() {
     // Display songs in their current order
     setlist.songs.forEach((song, index) => {
         const li = document.createElement('li');
-        li.draggable = true;
         li.dataset.index = index;
         
+        // Left side - Up button
+        const leftButtons = document.createElement('div');
+        leftButtons.className = 'move-buttons';
+        
+        const upBtn = document.createElement('button');
+        upBtn.className = 'move-btn';
+        upBtn.innerHTML = '↑';
+        upBtn.title = 'Move up';
+        upBtn.disabled = index === 0;
+        upBtn.addEventListener('click', () => moveSong(index, index - 1));
+        leftButtons.appendChild(upBtn);
+        
+        li.appendChild(leftButtons);
+        
+        // Center - Song name
         const span = document.createElement('span');
         span.textContent = song;
         li.appendChild(span);
         
-        // Add drag handle (now on the right)
-        const dragHandle = document.createElement('div');
-        dragHandle.className = 'drag-handle';
-        dragHandle.innerHTML = '⋮⋮';
-        li.appendChild(dragHandle);
+        // Right side - Down button  
+        const rightButtons = document.createElement('div');
+        rightButtons.className = 'move-buttons';
         
-        // Drag and drop event listeners
-        li.addEventListener('dragstart', handleDragStart);
-        li.addEventListener('dragover', handleDragOver);
-        li.addEventListener('drop', handleDrop);
-        li.addEventListener('dragend', handleDragEnd);
+        const downBtn = document.createElement('button');
+        downBtn.className = 'move-btn';
+        downBtn.innerHTML = '↓';
+        downBtn.title = 'Move down';
+        downBtn.disabled = index === setlist.songs.length - 1;
+        downBtn.addEventListener('click', () => moveSong(index, index + 1));
+        rightButtons.appendChild(downBtn);
         
-        // Swipe to delete event listeners
+        li.appendChild(rightButtons);
+        
+        // Right-click context menu
+        li.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            showContextMenu(e, song, index);
+        });
+        
+        // Swipe to delete event listeners (keep for mobile)
         addSwipeToDeleteListeners(li, song, index);
         
         todoList.appendChild(li);
     });
+}
+
+// Move song up or down
+async function moveSong(fromIndex, toIndex) {
+    if (toIndex < 0 || toIndex >= setlists[currentListId].songs.length) return;
+    
+    const songs = setlists[currentListId].songs;
+    const song = songs[fromIndex];
+    
+    // Remove from old position
+    songs.splice(fromIndex, 1);
+    
+    // Insert at new position
+    songs.splice(toIndex, 0, song);
+    
+    await saveSetlists();
+    renderSongs();
+}
+
+// Show context menu
+function showContextMenu(event, song, index) {
+    // Remove existing context menu
+    const existingMenu = document.querySelector('.context-menu');
+    if (existingMenu) {
+        existingMenu.remove();
+    }
+    
+    // Create context menu
+    const contextMenu = document.createElement('div');
+    contextMenu.className = 'context-menu';
+    
+    // Delete option
+    const deleteItem = document.createElement('div');
+    deleteItem.className = 'context-menu-item delete';
+    deleteItem.textContent = 'Delete';
+    deleteItem.addEventListener('click', () => {
+        deleteSong(song, index);
+        contextMenu.remove();
+    });
+    
+    contextMenu.appendChild(deleteItem);
+    
+    // Position menu
+    contextMenu.style.left = event.pageX + 'px';
+    contextMenu.style.top = event.pageY + 'px';
+    
+    // Add to document
+    document.body.appendChild(contextMenu);
+    
+    // Remove menu when clicking elsewhere
+    const removeMenu = (e) => {
+        if (!contextMenu.contains(e.target)) {
+            contextMenu.remove();
+            document.removeEventListener('click', removeMenu);
+        }
+    };
+    
+    // Add click listener after a brief delay to prevent immediate removal
+    setTimeout(() => {
+        document.addEventListener('click', removeMenu);
+    }, 10);
 }
 
 // Add swipe to delete functionality
@@ -538,61 +620,6 @@ function addSwipeToDeleteListeners(element, song, index) {
         element.classList.remove('swiping');
         isDragging = false;
     });
-    
-    // Mouse events for desktop
-    element.addEventListener('mousedown', (e) => {
-        // Only start swipe if clicking on the song text area (not drag handle)
-        if (e.target.classList.contains('drag-handle') || e.target.closest('.drag-handle')) {
-            return;
-        }
-        
-        startX = e.clientX;
-        isDragging = true;
-        element.classList.add('swiping');
-        
-        const mouseMoveHandler = (e) => {
-            if (!isDragging) return;
-            
-            currentX = e.clientX;
-            const deltaX = currentX - startX;
-            
-            // Only allow left swipe (negative deltaX)
-            if (deltaX < 0) {
-                element.style.transform = `translateX(${deltaX}px)`;
-                
-                // Change background color when swiping far enough
-                if (Math.abs(deltaX) > 100) {
-                    element.classList.add('swipe-left');
-                } else {
-                    element.classList.remove('swipe-left');
-                }
-            }
-        };
-        
-        const mouseUpHandler = (e) => {
-            if (!isDragging) return;
-            
-            const deltaX = currentX - startX;
-            
-            // Delete if swiped left more than 100px
-            if (Math.abs(deltaX) > 100 && deltaX < 0) {
-                deleteSong(song, index);
-            } else {
-                // Reset position
-                element.style.transform = '';
-                element.classList.remove('swipe-left');
-            }
-            
-            element.classList.remove('swiping');
-            isDragging = false;
-            
-            document.removeEventListener('mousemove', mouseMoveHandler);
-            document.removeEventListener('mouseup', mouseUpHandler);
-        };
-        
-        document.addEventListener('mousemove', mouseMoveHandler);
-        document.addEventListener('mouseup', mouseUpHandler);
-    });
 }
 
 // Delete song function
@@ -601,60 +628,6 @@ async function deleteSong(song, index) {
     await saveSetlists();
     renderSongs();
     showUndo(song, index);
-}
-
-// Drag and drop handlers
-function handleDragStart(e) {
-    draggedElement = e.target;
-    e.target.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/html', e.target.outerHTML);
-}
-
-function handleDragOver(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    
-    const draggingElement = document.querySelector('.dragging');
-    if (draggingElement && e.target !== draggingElement) {
-        const targetLi = e.target.closest('li');
-        if (targetLi && targetLi !== draggingElement) {
-            targetLi.classList.add('drag-over');
-        }
-    }
-}
-
-function handleDrop(e) {
-    e.preventDefault();
-    
-    const targetLi = e.target.closest('li');
-    if (targetLi && draggedElement && targetLi !== draggedElement) {
-        const draggedIndex = parseInt(draggedElement.dataset.index);
-        const targetIndex = parseInt(targetLi.dataset.index);
-        
-        // Reorder songs array
-        const setlist = setlists[currentListId];
-        const draggedSong = setlist.songs[draggedIndex];
-        
-        // Remove from old position
-        setlist.songs.splice(draggedIndex, 1);
-        
-        // Insert at new position
-        const newTargetIndex = draggedIndex < targetIndex ? targetIndex - 1 : targetIndex;
-        setlist.songs.splice(newTargetIndex, 0, draggedSong);
-        
-        saveSetlists();
-        renderSongs();
-    }
-    
-    // Clean up drag over states
-    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-}
-
-function handleDragEnd(e) {
-    e.target.classList.remove('dragging');
-    document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-    draggedElement = null;
 }
 
 // Show undo notification

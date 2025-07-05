@@ -245,7 +245,6 @@ h1 {
     min-height: 36px;
     box-sizing: border-box;
     gap: 10px;
-    cursor: move;
     user-select: none;
     position: relative;
     overflow: hidden;
@@ -253,19 +252,6 @@ h1 {
 
 #todo-list li:hover {
     background: #e9ecef;
-}
-
-/* Drag and drop styles */
-#todo-list li.dragging {
-    opacity: 0.5;
-    transform: scale(0.98);
-    z-index: 1000;
-    cursor: grabbing;
-}
-
-#todo-list li.drag-over {
-    background: #d4edda;
-    border: 2px dashed #28a745;
 }
 
 /* Swipe to delete styles */
@@ -278,31 +264,50 @@ h1 {
     background: #dc3545;
 }
 
-#todo-list li.swipe-left .drag-handle,
+#todo-list li.swipe-left .move-buttons,
 #todo-list li.swipe-left span {
     color: white;
 }
 
-.drag-handle {
-    cursor: grab;
-    color: #666;
-    font-size: 16px;
+.move-buttons {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.move-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
-    opacity: 0.6;
-    transition: opacity 0.2s;
-    order: 2; /* Move to right side */
+    cursor: pointer;
+    font-size: 12px;
+    transition: background 0.2s, transform 0.1s;
 }
 
-.drag-handle:hover {
-    opacity: 1;
+.move-btn:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
 }
 
-.drag-handle:active {
-    cursor: grabbing;
+.move-btn:active {
+    transform: translateY(0);
+}
+
+.move-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.move-btn:disabled:hover {
+    background: #ccc;
+    transform: none;
 }
 
 #todo-list li span {
@@ -312,10 +317,38 @@ h1 {
     display: flex;
     align-items: center;
     justify-content: center;
-    order: 1; /* Keep in center */
 }
 
+/* Context Menu Styles */
+.context-menu {
+    position: fixed;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    min-width: 120px;
+    padding: 4px 0;
+}
 
+.context-menu-item {
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s;
+}
+
+.context-menu-item:hover {
+    background: #f0f0f0;
+}
+
+.context-menu-item.delete {
+    color: #dc3545;
+}
+
+.context-menu-item.delete:hover {
+    background: #ffeaea;
+}
 
 /* Undo notification styling */
 .undo-notification {
@@ -391,6 +424,12 @@ h1 {
     
     #todo-list li span {
         font-size: 14px;
+    }
+    
+    .move-btn {
+        width: 20px;
+        height: 20px;
+        font-size: 10px;
     }
     
     #lists-grid {
