@@ -577,25 +577,25 @@ function addSwipeToDeleteListeners(element, song, index) {
         const deltaX = currentX - startX;
         const deltaY = currentY - startY;
         
-        // Determine if this is a vertical scroll
-        if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) {
+        // Determine if this is a vertical scroll (more lenient threshold)
+        if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 15) {
             isVerticalScroll = true;
             element.classList.remove('swiping');
             element.style.transform = '';
             return;
         }
         
-        // Prevent vertical scrolling during horizontal swipe
-        if (Math.abs(deltaX) > 10 && !isVerticalScroll) {
+        // Prevent vertical scrolling during horizontal swipe (higher threshold)
+        if (Math.abs(deltaX) > 30 && !isVerticalScroll) {
             e.preventDefault();
         }
         
-        // Only allow left swipe (negative deltaX)
-        if (deltaX < 0 && !isVerticalScroll) {
+        // Only allow left swipe (negative deltaX) and require minimum movement
+        if (deltaX < 0 && !isVerticalScroll && Math.abs(deltaX) > 20) {
             element.style.transform = `translateX(${deltaX}px)`;
             
-            // Change background color when swiping far enough
-            if (Math.abs(deltaX) > 100) {
+            // Change background color when swiping far enough (much longer distance)
+            if (Math.abs(deltaX) > 200) {
                 element.classList.add('swipe-left');
             } else {
                 element.classList.remove('swipe-left');
@@ -608,8 +608,8 @@ function addSwipeToDeleteListeners(element, song, index) {
         
         const deltaX = currentX - startX;
         
-        // Delete if swiped left more than 100px
-        if (Math.abs(deltaX) > 100 && deltaX < 0) {
+        // Delete if swiped left more than 200px (much longer swipe required)
+        if (Math.abs(deltaX) > 200 && deltaX < 0) {
             deleteSong(song, index);
         } else {
             // Reset position
