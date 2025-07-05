@@ -276,37 +276,43 @@ h1 {
 }
 
 .move-btn {
-    background: #6c757d;
-    color: white;
+    background: transparent;
+    color: #666;
     border: none;
-    border-radius: 4px;
-    width: 24px;
-    height: 24px;
+    border-radius: 0;
+    width: 20px;
+    height: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    font-size: 12px;
-    transition: background 0.2s, transform 0.1s;
+    font-size: 16px;
+    font-weight: bold;
+    transition: color 0.2s;
+    padding: 0;
+    margin: 0;
 }
 
 .move-btn:hover {
-    background: #5a6268;
-    transform: translateY(-1px);
-}
-
-.move-btn:active {
-    transform: translateY(0);
-}
-
-.move-btn:disabled {
-    background: #ccc;
-    cursor: not-allowed;
+    color: #333;
+    background: transparent;
     transform: none;
 }
 
+.move-btn:active {
+    color: #000;
+    transform: none;
+}
+
+.move-btn:disabled {
+    color: #ccc;
+    cursor: not-allowed;
+    background: transparent;
+}
+
 .move-btn:disabled:hover {
-    background: #ccc;
+    color: #ccc;
+    background: transparent;
     transform: none;
 }
 
@@ -427,9 +433,9 @@ h1 {
     }
     
     .move-btn {
-        width: 20px;
-        height: 20px;
-        font-size: 10px;
+        width: 18px;
+        height: 18px;
+        font-size: 14px;
     }
     
     #lists-grid {
