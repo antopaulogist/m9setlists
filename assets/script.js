@@ -484,9 +484,6 @@ function renderSongs() {
             showContextMenu(e, song, index);
         });
         
-        // Swipe to delete event listeners (keep for mobile)
-        addSwipeToDeleteListeners(li, song, index);
-        
         todoList.appendChild(li);
     });
 }
@@ -552,75 +549,7 @@ function showContextMenu(event, song, index) {
     }, 10);
 }
 
-// Add swipe to delete functionality
-function addSwipeToDeleteListeners(element, song, index) {
-    let startX = 0;
-    let startY = 0;
-    let currentX = 0;
-    let isDragging = false;
-    let isVerticalScroll = false;
-    
-    // Touch events for mobile
-    element.addEventListener('touchstart', (e) => {
-        startX = e.touches[0].clientX;
-        startY = e.touches[0].clientY;
-        isDragging = true;
-        isVerticalScroll = false;
-        element.classList.add('swiping');
-    });
-    
-    element.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        
-        currentX = e.touches[0].clientX;
-        const currentY = e.touches[0].clientY;
-        const deltaX = currentX - startX;
-        const deltaY = currentY - startY;
-        
-        // Determine if this is a vertical scroll (more lenient threshold)
-        if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 15) {
-            isVerticalScroll = true;
-            element.classList.remove('swiping');
-            element.style.transform = '';
-            return;
-        }
-        
-        // Prevent vertical scrolling during horizontal swipe (higher threshold)
-        if (Math.abs(deltaX) > 30 && !isVerticalScroll) {
-            e.preventDefault();
-        }
-        
-        // Only allow left swipe (negative deltaX) and require minimum movement
-        if (deltaX < 0 && !isVerticalScroll && Math.abs(deltaX) > 20) {
-            element.style.transform = `translateX(${deltaX}px)`;
-            
-            // Change background color when swiping far enough (much longer distance)
-            if (Math.abs(deltaX) > 200) {
-                element.classList.add('swipe-left');
-            } else {
-                element.classList.remove('swipe-left');
-            }
-        }
-    });
-    
-    element.addEventListener('touchend', (e) => {
-        if (!isDragging || isVerticalScroll) return;
-        
-        const deltaX = currentX - startX;
-        
-        // Delete if swiped left more than 200px (much longer swipe required)
-        if (Math.abs(deltaX) > 200 && deltaX < 0) {
-            deleteSong(song, index);
-        } else {
-            // Reset position
-            element.style.transform = '';
-            element.classList.remove('swipe-left');
-        }
-        
-        element.classList.remove('swiping');
-        isDragging = false;
-    });
-}
+
 
 // Delete song function
 async function deleteSong(song, index) {

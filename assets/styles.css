@@ -241,33 +241,18 @@ h1 {
     justify-content: space-between;
     align-items: center;
     font-size: 15px;
-    transition: background 0.2s, transform 0.2s;
+    transition: background 0.2s;
     min-height: 36px;
     box-sizing: border-box;
     gap: 10px;
     user-select: none;
-    position: relative;
-    overflow: hidden;
 }
 
 #todo-list li:hover {
     background: #e9ecef;
 }
 
-/* Swipe to delete styles */
-#todo-list li.swiping {
-    transition: transform 0.2s ease-out;
-}
 
-#todo-list li.swipe-left {
-    transform: translateX(-100%);
-    background: #dc3545;
-}
-
-#todo-list li.swipe-left .move-buttons,
-#todo-list li.swipe-left span {
-    color: white;
-}
 
 .move-buttons {
     display: flex;
