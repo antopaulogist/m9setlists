@@ -881,7 +881,6 @@ async function saveBuilderSetlist() {
     // Reset builder state
     builderSetlistId = null;
     builderSongs = [];
-    showSuccess('Setlist saved successfully!');
 }
 
 // Helper functions
@@ -1027,7 +1026,6 @@ async function deleteSetlist(setlistId) {
         } else {
             delete setlists[setlistId];
             renderSetlists();
-            showSuccess('Setlist deleted successfully!');
         }
     } catch (error) {
         console.error('Error deleting setlist:', error);
@@ -1050,7 +1048,6 @@ async function deleteSong(songId) {
         } else {
             delete songs[songId];
             renderSongs();
-            showSuccess('Song deleted successfully!');
         }
     } catch (error) {
         console.error('Error deleting song:', error);
@@ -1065,7 +1062,6 @@ async function saveSetlistTitle() {
     if (newTitle) {
         setlists[currentSetlistId].name = newTitle;
         await updateSetlist(currentSetlistId);
-        showSuccess('Setlist title updated successfully!');
     }
 }
 
