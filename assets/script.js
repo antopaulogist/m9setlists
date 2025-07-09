@@ -26,6 +26,16 @@ const songSeconds = document.getElementById('song-seconds');
 const songsList = document.getElementById('songs-list');
 const noSongsState = document.getElementById('no-songs-state');
 
+// Setlist Builder View Elements
+const setlistBuilderView = document.getElementById('setlist-builder-view');
+const builderBackBtn = document.getElementById('builder-back-btn');
+const builderTitle = document.getElementById('builder-title');
+const saveSetlistBtn = document.getElementById('save-setlist-btn');
+const songSearch = document.getElementById('song-search');
+const availableSongs = document.getElementById('available-songs');
+const previewList = document.getElementById('preview-list');
+const totalDurationEl = document.getElementById('total-duration');
+
 // Setlist View Elements
 const setlistView = document.getElementById('setlist-view');
 const backBtn = document.getElementById('back-btn');
@@ -37,6 +47,8 @@ const emptySetlistState = document.getElementById('empty-setlist-state');
 // State
 let currentView = 'setlists';
 let currentSetlistId = null;
+let builderSetlistId = null;
+let builderSongs = [];
 let setlists = {};
 let songs = {};
 let lastDeleted = null;
@@ -83,6 +95,11 @@ function bindEvents() {
 
     // Songs
     newSongForm.addEventListener('submit', addSong);
+
+    // Builder
+    builderBackBtn.addEventListener('click', () => showView('setlists'));
+    saveSetlistBtn.addEventListener('click', saveBuilderSetlist);
+    songSearch.addEventListener('input', filterAvailableSongs);
 }
 
 // Navigation
@@ -111,6 +128,10 @@ function showView(viewName) {
         case 'setlist':
             setlistView.classList.remove('hidden');
             renderSetlistView();
+            break;
+        case 'builder':
+            setlistBuilderView.classList.remove('hidden');
+            renderBuilderView();
             break;
     }
 }
@@ -288,6 +309,9 @@ function updateCurrentView() {
             case 'setlist':
                 renderSetlistView();
                 break;
+            case 'builder':
+                renderBuilderView();
+                break;
         }
     }, 100);
 }
@@ -366,6 +390,21 @@ function renderSetlists() {
         setlistContent.appendChild(p);
         setlistContent.addEventListener('click', () => showSetlistView(setlistId));
         
+        // Actions container
+        const actionsContainer = document.createElement('div');
+        actionsContainer.className = 'setlist-actions';
+        
+        // Build button
+        const buildBtn = document.createElement('button');
+        buildBtn.className = 'setlist-build-btn';
+        buildBtn.textContent = 'Build';
+        buildBtn.title = 'Add songs to this setlist';
+        buildBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showBuilderView(setlistId);
+        });
+        
+        // Delete button
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'setlist-delete-btn';
         deleteBtn.innerHTML = '×';
@@ -376,8 +415,11 @@ function renderSetlists() {
             }
         });
         
+        actionsContainer.appendChild(buildBtn);
+        actionsContainer.appendChild(deleteBtn);
+        
         setlistCard.appendChild(setlistContent);
-        setlistCard.appendChild(deleteBtn);
+        setlistCard.appendChild(actionsContainer);
         setlistsGrid.appendChild(setlistCard);
     });
 }
@@ -486,6 +528,13 @@ function showSetlistView(setlistId) {
     showView('setlist');
 }
 
+// Show builder view
+function showBuilderView(setlistId) {
+    builderSetlistId = setlistId;
+    builderSongs = [...(setlists[setlistId]?.song_ids || [])];
+    showView('builder');
+}
+
 // Render setlist view
 function renderSetlistView() {
     if (!currentSetlistId || !setlists[currentSetlistId]) {
@@ -557,6 +606,179 @@ function renderSetlistView() {
         
         setlistSongs.appendChild(li);
     });
+}
+
+// Render builder view
+function renderBuilderView() {
+    if (!builderSetlistId || !setlists[builderSetlistId]) {
+        showView('setlists');
+        return;
+    }
+
+    const setlist = setlists[builderSetlistId];
+    builderTitle.textContent = `Build: ${setlist.name}`;
+    
+    // Update total duration
+    updateBuilderDuration();
+    
+    // Render available songs
+    renderAvailableSongs();
+    
+    // Render preview list
+    renderPreviewList();
+}
+
+// Render available songs
+function renderAvailableSongs() {
+    const searchTerm = songSearch.value.toLowerCase();
+    const songIds = Object.keys(songs);
+    
+    if (songIds.length === 0) {
+        availableSongs.innerHTML = '<p class="empty-state">No songs in library. Add some in the Song Library tab!</p>';
+        return;
+    }
+
+    availableSongs.innerHTML = '';
+
+    // Filter and sort songs
+    const filteredSongs = songIds
+        .filter(songId => {
+            const song = songs[songId];
+            return song.title.toLowerCase().includes(searchTerm);
+        })
+        .sort((a, b) => songs[a].title.localeCompare(songs[b].title));
+
+    if (filteredSongs.length === 0) {
+        availableSongs.innerHTML = '<p class="empty-state">No songs match your search.</p>';
+        return;
+    }
+
+    filteredSongs.forEach(songId => {
+        const song = songs[songId];
+        const songItem = document.createElement('div');
+        songItem.className = 'builder-song-item';
+        
+        // Check if song is already in setlist
+        const isInSetlist = builderSongs.includes(songId);
+        if (isInSetlist) {
+            songItem.classList.add('in-setlist');
+        }
+        
+        const songInfo = document.createElement('div');
+        songInfo.className = 'builder-song-info';
+        
+        const songTitle = document.createElement('div');
+        songTitle.className = 'builder-song-title';
+        songTitle.textContent = song.title;
+        
+        const songDuration = document.createElement('div');
+        songDuration.className = 'builder-song-duration';
+        songDuration.textContent = formatSongDuration(song.duration_minutes, song.duration_seconds);
+        
+        songInfo.appendChild(songTitle);
+        songInfo.appendChild(songDuration);
+        
+        // Add button
+        const addBtn = document.createElement('button');
+        addBtn.className = 'builder-add-btn';
+        addBtn.textContent = isInSetlist ? 'Added' : 'Add';
+        addBtn.disabled = isInSetlist;
+        addBtn.addEventListener('click', () => addSongToBuilder(songId));
+        
+        songItem.appendChild(songInfo);
+        songItem.appendChild(addBtn);
+        availableSongs.appendChild(songItem);
+    });
+}
+
+// Render preview list
+function renderPreviewList() {
+    previewList.innerHTML = '';
+    
+    if (builderSongs.length === 0) {
+        previewList.innerHTML = '<li class="empty-state">No songs added yet</li>';
+        return;
+    }
+
+    builderSongs.forEach((songId, index) => {
+        const song = songs[songId];
+        if (!song) return;
+        
+        const li = document.createElement('li');
+        li.className = 'builder-preview-item';
+        
+        const songInfo = document.createElement('div');
+        songInfo.className = 'builder-preview-info';
+        
+        const songTitle = document.createElement('span');
+        songTitle.className = 'builder-preview-title';
+        songTitle.textContent = song.title;
+        
+        const songDuration = document.createElement('span');
+        songDuration.className = 'builder-preview-duration';
+        songDuration.textContent = formatSongDuration(song.duration_minutes, song.duration_seconds);
+        
+        songInfo.appendChild(songTitle);
+        songInfo.appendChild(songDuration);
+        
+        // Remove button
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'builder-remove-btn';
+        removeBtn.innerHTML = '×';
+        removeBtn.title = 'Remove from setlist';
+        removeBtn.addEventListener('click', () => removeSongFromBuilder(index));
+        
+        li.appendChild(songInfo);
+        li.appendChild(removeBtn);
+        previewList.appendChild(li);
+    });
+}
+
+// Add song to builder
+function addSongToBuilder(songId) {
+    if (!builderSongs.includes(songId)) {
+        builderSongs.push(songId);
+        updateBuilderDuration();
+        renderAvailableSongs();
+        renderPreviewList();
+    }
+}
+
+// Remove song from builder
+function removeSongFromBuilder(index) {
+    builderSongs.splice(index, 1);
+    updateBuilderDuration();
+    renderAvailableSongs();
+    renderPreviewList();
+}
+
+// Update builder duration
+function updateBuilderDuration() {
+    const totalDuration = calculateSetlistDuration(builderSongs);
+    totalDurationEl.textContent = `Total: ${formatDuration(totalDuration)}`;
+}
+
+// Filter available songs
+function filterAvailableSongs() {
+    renderAvailableSongs();
+}
+
+// Save builder setlist
+async function saveBuilderSetlist() {
+    if (!builderSetlistId) return;
+    
+    // Update the setlist
+    setlists[builderSetlistId].song_ids = [...builderSongs];
+    
+    // Save to database
+    await updateSetlist(builderSetlistId);
+    
+    // Go back to setlists view
+    showView('setlists');
+    
+    // Reset builder state
+    builderSetlistId = null;
+    builderSongs = [];
 }
 
 // Helper functions

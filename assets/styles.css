@@ -128,6 +128,38 @@ h1 {
     color: #666;
 }
 
+.setlist-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.setlist-build-btn {
+    background: #28a745;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 8px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 36px;
+    min-width: 50px;
+    box-sizing: border-box;
+}
+
+.setlist-build-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+}
+
+.setlist-build-btn:active {
+    transform: translateY(0);
+}
+
 .setlist-delete-btn {
     background: #dc3545;
     color: #fff;
@@ -152,6 +184,239 @@ h1 {
 
 .setlist-delete-btn:active {
     transform: translateY(0);
+}
+
+/* Setlist Builder Styles */
+#builder-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 800px;
+    margin: 20px auto 0;
+    padding: 0 20px;
+}
+
+#builder-back-btn {
+    background: #6c757d;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#builder-back-btn:hover {
+    background: #5a6268;
+}
+
+#builder-title {
+    flex: 1;
+    margin: 0 15px;
+    font-size: 24px;
+    text-align: center;
+    color: #333;
+}
+
+#save-setlist-btn {
+    background: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-weight: 500;
+}
+
+#save-setlist-btn:hover {
+    background: #0056b3;
+}
+
+#builder-container {
+    display: flex;
+    gap: 20px;
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 0 20px;
+}
+
+#song-selector {
+    flex: 1;
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+#song-selector h3 {
+    margin: 0 0 15px 0;
+    color: #333;
+    font-size: 18px;
+}
+
+#song-search {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+#song-search:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+#available-songs {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.builder-song-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    transition: background 0.2s;
+    border: 1px solid transparent;
+}
+
+.builder-song-item:hover {
+    background: #f8f9fa;
+}
+
+.builder-song-item.in-setlist {
+    background: #e7f3ff;
+    border-color: #b3d7ff;
+}
+
+.builder-song-info {
+    flex: 1;
+    text-align: left;
+}
+
+.builder-song-title {
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 2px;
+}
+
+.builder-song-duration {
+    font-size: 12px;
+    color: #666;
+}
+
+.builder-add-btn {
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    min-width: 50px;
+}
+
+.builder-add-btn:hover {
+    background: #0056b3;
+}
+
+.builder-add-btn:disabled {
+    background: #6c757d;
+    cursor: not-allowed;
+}
+
+#setlist-preview {
+    flex: 1;
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+#setlist-preview h3 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 18px;
+}
+
+#total-duration {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+#preview-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.builder-preview-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 4px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    border: 1px solid #e9ecef;
+}
+
+.builder-preview-item:hover {
+    background: #e9ecef;
+}
+
+.builder-preview-info {
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.builder-preview-title {
+    font-weight: 500;
+    color: #333;
+}
+
+.builder-preview-duration {
+    font-size: 12px;
+    color: #666;
+}
+
+.builder-remove-btn {
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-left: 8px;
+}
+
+.builder-remove-btn:hover {
+    background: #a71d2a;
 }
 
 /* Song Library Styles */
@@ -604,5 +869,102 @@ h1 {
         width: 50px;
         height: 42px;
         padding: 10px 4px;
+    }
+
+    /* Builder responsive styles */
+    #builder-container {
+        flex-direction: column;
+        padding: 0 10px;
+        gap: 15px;
+    }
+
+    #builder-header {
+        margin: 10px auto 0;
+        padding: 0 10px;
+    }
+
+    #builder-title {
+        font-size: 18px;
+        margin: 0 8px;
+    }
+
+    #builder-back-btn {
+        padding: 6px 10px;
+        font-size: 14px;
+    }
+
+    #save-setlist-btn {
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+
+    #song-selector,
+    #setlist-preview {
+        padding: 15px;
+    }
+
+    #song-selector h3,
+    #setlist-preview h3 {
+        font-size: 16px;
+    }
+
+    #song-search {
+        padding: 8px 10px;
+        font-size: 14px;
+    }
+
+    .builder-song-item {
+        padding: 8px 10px;
+        margin-bottom: 3px;
+    }
+
+    .builder-song-title {
+        font-size: 14px;
+    }
+
+    .builder-song-duration {
+        font-size: 11px;
+    }
+
+    .builder-add-btn {
+        padding: 5px 10px;
+        font-size: 11px;
+        min-width: 45px;
+    }
+
+    .builder-preview-item {
+        padding: 6px 10px;
+        margin-bottom: 3px;
+    }
+
+    .builder-preview-title {
+        font-size: 14px;
+    }
+
+    .builder-preview-duration {
+        font-size: 11px;
+    }
+
+    .builder-remove-btn {
+        padding: 3px 6px;
+        font-size: 11px;
+    }
+
+    .setlist-actions {
+        gap: 6px;
+    }
+
+    .setlist-build-btn {
+        height: 32px;
+        min-width: 45px;
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .setlist-delete-btn {
+        height: 32px;
+        min-width: 32px;
+        padding: 6px 8px;
+        font-size: 12px;
     }
 }
