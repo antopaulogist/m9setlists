@@ -8,38 +8,78 @@
 </head>
 <body>
     <div id="app">
-        <!-- Main Lists Overview -->
-        <div id="lists-view" class="view">
-            <h1>Mickey 9s Setlist</h1>
-            <div id="lists-container">
-                <form id="new-list-form" autocomplete="off">
+        <!-- Navigation Tabs -->
+        <nav id="main-nav" class="nav-tabs">
+            <button class="nav-tab active" data-view="setlists">Setlists</button>
+            <button class="nav-tab" data-view="songs">Song Library</button>
+        </nav>
+
+        <!-- Setlists View (Home) -->
+        <div id="setlists-view" class="view">
+            <h1>Mickey 9s Setlists</h1>
+            <div id="setlists-container">
+                <form id="new-setlist-form" autocomplete="off">
                     <div id="input-row">
-                        <label for="new-list-input" class="visually-hidden">Create a new setlist</label>
-                        <input type="text" id="new-list-input" placeholder="Create a new setlist..." maxlength="50">
-                        <button id="create-list-btn" type="submit" aria-label="Create setlist">+</button>
+                        <label for="new-setlist-input" class="visually-hidden">Create a new setlist</label>
+                        <input type="text" id="new-setlist-input" placeholder="Create a new setlist..." maxlength="50">
+                        <button id="create-setlist-btn" type="submit" aria-label="Create setlist">+</button>
                     </div>
                 </form>
-                <div id="lists-grid"></div>
-                <p id="no-lists-state" class="empty-state">No setlists yet!</p>
+                <div id="setlists-grid"></div>
+                <p id="no-setlists-state" class="empty-state">No setlists yet!</p>
             </div>
         </div>
 
-        <!-- Individual List View -->
-        <div id="list-view" class="view hidden">
-            <div id="list-header">
-                <button id="back-btn" aria-label="Back to setlists">←</button>
-                <h1 id="list-title" contenteditable="true">Setlist Name</h1>
-            </div>
-            <div id="todo-container">
-                <form id="todo-form" autocomplete="off">
-                    <div id="input-row">
-                        <label for="todo-input" class="visually-hidden">Add a new song</label>
-                        <input type="text" id="todo-input" placeholder="Add a new song..." maxlength="100">
-                        <button id="addBtn" type="submit" aria-label="Add song">+</button>
+        <!-- Song Library View -->
+        <div id="songs-view" class="view hidden">
+            <h1>Song Library</h1>
+            <div id="songs-container">
+                <form id="new-song-form" autocomplete="off">
+                    <div id="song-input-row">
+                        <label for="new-song-input" class="visually-hidden">Add a new song</label>
+                        <input type="text" id="new-song-input" placeholder="Song title..." maxlength="100">
+                        <input type="number" id="song-minutes" placeholder="Min" min="0" max="30" style="width: 60px;">
+                        <span>:</span>
+                        <input type="number" id="song-seconds" placeholder="Sec" min="0" max="59" style="width: 60px;">
+                        <button id="add-song-btn" type="submit" aria-label="Add song">+</button>
                     </div>
                 </form>
-                <ul id="todo-list" aria-live="polite"></ul>
-                <p id="empty-state" class="empty-state">No songs yet!</p>
+                <div id="songs-list"></div>
+                <p id="no-songs-state" class="empty-state">No songs in library yet!</p>
+            </div>
+        </div>
+
+        <!-- Setlist Builder View -->
+        <div id="setlist-builder-view" class="view hidden">
+            <div id="builder-header">
+                <button id="builder-back-btn" aria-label="Back to setlists">←</button>
+                <h1 id="builder-title">Build Setlist</h1>
+                <button id="save-setlist-btn" aria-label="Save setlist">Save</button>
+            </div>
+            <div id="builder-container">
+                <div id="song-selector">
+                    <h3>Available Songs</h3>
+                    <input type="text" id="song-search" placeholder="Search songs...">
+                    <div id="available-songs"></div>
+                </div>
+                <div id="setlist-preview">
+                    <h3>Setlist Preview</h3>
+                    <div id="total-duration">Total: 0:00</div>
+                    <ul id="preview-list"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Individual Setlist View -->
+        <div id="setlist-view" class="view hidden">
+            <div id="setlist-header">
+                <button id="back-btn" aria-label="Back to setlists">←</button>
+                <h1 id="setlist-title" contenteditable="true">Setlist Name</h1>
+                <div id="setlist-duration">0:00</div>
+            </div>
+            <div id="setlist-container">
+                <ul id="setlist-songs" aria-live="polite"></ul>
+                <p id="empty-setlist-state" class="empty-state">No songs in this setlist!</p>
             </div>
         </div>
     </div>

@@ -8,23 +8,37 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 let supabase;
 
 // DOM Elements
-const listsView = document.getElementById('lists-view');
-const listView = document.getElementById('list-view');
-const newListForm = document.getElementById('new-list-form');
-const newListInput = document.getElementById('new-list-input');
-const listsGrid = document.getElementById('lists-grid');
-const noListsState = document.getElementById('no-lists-state');
-const backBtn = document.getElementById('back-btn');
-const listTitle = document.getElementById('list-title');
+const navTabs = document.querySelectorAll('.nav-tab');
 
-const todoInput = document.getElementById('todo-input');
-const todoList = document.getElementById('todo-list');
-const todoForm = document.getElementById('todo-form');
-const emptyState = document.getElementById('empty-state');
+// Setlists View Elements
+const setlistsView = document.getElementById('setlists-view');
+const newSetlistForm = document.getElementById('new-setlist-form');
+const newSetlistInput = document.getElementById('new-setlist-input');
+const setlistsGrid = document.getElementById('setlists-grid');
+const noSetlistsState = document.getElementById('no-setlists-state');
+
+// Songs View Elements
+const songsView = document.getElementById('songs-view');
+const newSongForm = document.getElementById('new-song-form');
+const newSongInput = document.getElementById('new-song-input');
+const songMinutes = document.getElementById('song-minutes');
+const songSeconds = document.getElementById('song-seconds');
+const songsList = document.getElementById('songs-list');
+const noSongsState = document.getElementById('no-songs-state');
+
+// Setlist View Elements
+const setlistView = document.getElementById('setlist-view');
+const backBtn = document.getElementById('back-btn');
+const setlistTitle = document.getElementById('setlist-title');
+const setlistDuration = document.getElementById('setlist-duration');
+const setlistSongs = document.getElementById('setlist-songs');
+const emptySetlistState = document.getElementById('empty-setlist-state');
 
 // State
-let currentListId = null;
+let currentView = 'setlists';
+let currentSetlistId = null;
 let setlists = {};
+let songs = {};
 let lastDeleted = null;
 let undoTimeout = null;
 let realtimeChannel = null;
@@ -42,10 +56,10 @@ async function init() {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('Supabase initialized successfully');
         
-        await loadSetlists();
+        await loadData();
         setupRealTimeSync();
-        showListsView();
         bindEvents();
+        showView('setlists');
     } catch (error) {
         console.error('Failed to initialize app:', error);
     }
@@ -53,11 +67,106 @@ async function init() {
 
 // Event listeners
 function bindEvents() {
-    newListForm.addEventListener('submit', createSetlist);
-    backBtn.addEventListener('click', showListsView);
-    listTitle.addEventListener('blur', saveSetlistTitle);
-    listTitle.addEventListener('keydown', handleTitleKeydown);
-    todoForm.addEventListener('submit', addSong);
+    // Navigation
+    navTabs.forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            const view = e.target.dataset.view;
+            showView(view);
+        });
+    });
+
+    // Setlists
+    newSetlistForm.addEventListener('submit', createSetlist);
+    backBtn.addEventListener('click', () => showView('setlists'));
+    setlistTitle.addEventListener('blur', saveSetlistTitle);
+    setlistTitle.addEventListener('keydown', handleTitleKeydown);
+
+    // Songs
+    newSongForm.addEventListener('submit', addSong);
+}
+
+// Navigation
+function showView(viewName) {
+    // Update navigation
+    navTabs.forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.view === viewName);
+    });
+
+    // Hide all views
+    document.querySelectorAll('.view').forEach(view => {
+        view.classList.add('hidden');
+    });
+
+    // Show selected view
+    currentView = viewName;
+    switch (viewName) {
+        case 'setlists':
+            setlistsView.classList.remove('hidden');
+            renderSetlists();
+            break;
+        case 'songs':
+            songsView.classList.remove('hidden');
+            renderSongs();
+            break;
+        case 'setlist':
+            setlistView.classList.remove('hidden');
+            renderSetlistView();
+            break;
+    }
+}
+
+// Load all data from Supabase
+async function loadData() {
+    if (!supabase) {
+        console.error('Supabase not initialized');
+        return;
+    }
+    
+    try {
+        // Load setlists
+        const { data: setlistsData, error: setlistsError } = await supabase
+            .from('setlists')
+            .select('*');
+        
+        if (setlistsError) {
+            console.error('Error loading setlists:', setlistsError);
+        } else {
+            setlists = {};
+            setlistsData.forEach(setlist => {
+                setlists[setlist.id] = {
+                    name: setlist.name,
+                    song_ids: setlist.song_ids || [],
+                    total_duration_minutes: setlist.total_duration_minutes || 0,
+                    created: setlist.created
+                };
+            });
+        }
+
+        // Load songs
+        const { data: songsData, error: songsError } = await supabase
+            .from('songs')
+            .select('*');
+        
+        if (songsError) {
+            console.error('Error loading songs:', songsError);
+        } else {
+            songs = {};
+            songsData.forEach(song => {
+                songs[song.id] = {
+                    title: song.title,
+                    duration_minutes: song.duration_minutes || 0,
+                    duration_seconds: song.duration_seconds || 0,
+                    category: song.category || 'general',
+                    notes: song.notes || '',
+                    created: song.created
+                };
+            });
+        }
+
+        console.log('Data loaded successfully');
+    } catch (error) {
+        console.error('Error loading data:', error);
+    }
 }
 
 // Setup real-time synchronization
@@ -68,16 +177,16 @@ function setupRealTimeSync() {
     }
     
     try {
-        // Create a channel for real-time updates
+        // Create channels for both tables
         realtimeChannel = supabase
-            .channel('setlists_changes')
+            .channel('data_changes')
             .on('postgres_changes', 
-                { 
-                    event: '*', 
-                    schema: 'public', 
-                    table: 'setlists' 
-                }, 
-                handleRealTimeChange
+                { event: '*', schema: 'public', table: 'setlists' }, 
+                handleSetlistChange
+            )
+            .on('postgres_changes', 
+                { event: '*', schema: 'public', table: 'songs' }, 
+                handleSongChange
             )
             .subscribe((status) => {
                 console.log('Real-time subscription status:', status);
@@ -89,248 +198,150 @@ function setupRealTimeSync() {
     }
 }
 
-// Handle real-time database changes
-function handleRealTimeChange(payload) {
-    console.log('Real-time change received:', payload);
-    
+// Handle real-time setlist changes
+function handleSetlistChange(payload) {
     const { eventType, new: newRecord, old: oldRecord } = payload;
     
     switch (eventType) {
         case 'INSERT':
-            // New setlist added
             setlists[newRecord.id] = {
                 name: newRecord.name,
-                songs: newRecord.songs,
+                song_ids: newRecord.song_ids || [],
+                total_duration_minutes: newRecord.total_duration_minutes || 0,
                 created: newRecord.created
             };
-            updateUI();
             break;
             
         case 'UPDATE':
-            // Setlist modified
             if (setlists[newRecord.id]) {
                 setlists[newRecord.id] = {
                     name: newRecord.name,
-                    songs: newRecord.songs,
+                    song_ids: newRecord.song_ids || [],
+                    total_duration_minutes: newRecord.total_duration_minutes || 0,
                     created: newRecord.created
                 };
-                updateUI();
             }
             break;
             
         case 'DELETE':
-            // Setlist deleted
             if (oldRecord && setlists[oldRecord.id]) {
                 delete setlists[oldRecord.id];
-                
-                // If we're currently viewing the deleted setlist, go back to setlists view
-                if (currentListId === oldRecord.id) {
-                    showListsView();
-                } else {
-                    updateUI();
+                if (currentSetlistId === oldRecord.id) {
+                    showView('setlists');
                 }
             }
             break;
     }
+    
+    updateCurrentView();
 }
 
-// Update UI based on current view
-function updateUI() {
-    // Add a small delay to batch multiple rapid changes
-    clearTimeout(updateUI.timeout);
-    updateUI.timeout = setTimeout(() => {
-        if (currentListId) {
-            // We're in setlist view - update the current setlist
-            if (setlists[currentListId]) {
-                renderSongs();
-                // Update setlist title if it changed
-                const setlist = setlists[currentListId];
-                if (listTitle.textContent !== setlist.name) {
-                    listTitle.textContent = setlist.name;
-                }
-            } else {
-                // Current setlist was deleted, go back to setlists view
-                showListsView();
+// Handle real-time song changes
+function handleSongChange(payload) {
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+    
+    switch (eventType) {
+        case 'INSERT':
+            songs[newRecord.id] = {
+                title: newRecord.title,
+                duration_minutes: newRecord.duration_minutes || 0,
+                duration_seconds: newRecord.duration_seconds || 0,
+                category: newRecord.category || 'general',
+                notes: newRecord.notes || '',
+                created: newRecord.created
+            };
+            break;
+            
+        case 'UPDATE':
+            if (songs[newRecord.id]) {
+                songs[newRecord.id] = {
+                    title: newRecord.title,
+                    duration_minutes: newRecord.duration_minutes || 0,
+                    duration_seconds: newRecord.duration_seconds || 0,
+                    category: newRecord.category || 'general',
+                    notes: newRecord.notes || '',
+                    created: newRecord.created
+                };
             }
-        } else {
-            // We're in setlists overview - update the setlists grid
-            renderSetlists();
+            break;
+            
+        case 'DELETE':
+            if (oldRecord && songs[oldRecord.id]) {
+                delete songs[oldRecord.id];
+            }
+            break;
+    }
+    
+    updateCurrentView();
+}
+
+// Update current view
+function updateCurrentView() {
+    setTimeout(() => {
+        switch (currentView) {
+            case 'setlists':
+                renderSetlists();
+                break;
+            case 'songs':
+                renderSongs();
+                break;
+            case 'setlist':
+                renderSetlistView();
+                break;
         }
     }, 100);
-}
-
-// Load setlists from Supabase
-async function loadSetlists() {
-    if (!supabase) {
-        console.error('Supabase not initialized');
-        setlists = {};
-        return;
-    }
-    
-    try {
-        console.log('Loading setlists from Supabase...');
-        const { data, error } = await supabase
-            .from('setlists')
-            .select('*');
-        
-        if (error) {
-            console.error('Error loading setlists:', error);
-            setlists = {};
-        } else {
-            console.log('Setlists loaded successfully:', data);
-            // Convert array to object format
-            setlists = {};
-            data.forEach(setlist => {
-                setlists[setlist.id] = {
-                    name: setlist.name,
-                    songs: setlist.songs,
-                    created: setlist.created
-                };
-            });
-        }
-        
-        // Check for old localStorage data and migrate it
-        const savedLists = localStorage.getItem('allLists');
-        const oldItems = localStorage.getItem('shoppingItems');
-        
-        if (savedLists || oldItems) {
-            await migrateLocalStorageData(savedLists, oldItems);
-        }
-    } catch (error) {
-        console.error('Error loading setlists:', error);
-        setlists = {};
-    }
-}
-
-// Migrate old localStorage data to server
-async function migrateLocalStorageData(savedLists, oldItems) {
-    try {
-        let hasData = false;
-        
-        if (savedLists) {
-            const localLists = JSON.parse(savedLists);
-            Object.keys(localLists).forEach(id => {
-                setlists[id] = {
-                    name: localLists[id].name,
-                    songs: localLists[id].items || [],
-                    created: localLists[id].created
-                };
-            });
-            hasData = true;
-        } else if (oldItems) {
-            const items = JSON.parse(oldItems);
-            if (items.length > 0) {
-                const listId = Date.now().toString();
-                setlists[listId] = {
-                    name: 'Main Setlist',
-                    songs: items,
-                    created: Date.now()
-                };
-                hasData = true;
-            }
-        }
-        
-        if (hasData) {
-            await saveSetlists();
-            // Clear localStorage after successful migration
-            localStorage.removeItem('allLists');
-            localStorage.removeItem('shoppingItems');
-            console.log('Successfully migrated data to server');
-        }
-    } catch (error) {
-        console.error('Error migrating localStorage data:', error);
-    }
-}
-
-// Save setlists to Supabase
-async function saveSetlists() {
-    if (!supabase) {
-        console.error('Supabase not initialized');
-        return;
-    }
-    
-    try {
-        // Get current setlists from database
-        const { data: existingSetlists, error: fetchError } = await supabase
-            .from('setlists')
-            .select('id');
-        
-        if (fetchError) {
-            console.error('Error fetching existing setlists:', fetchError);
-            return;
-        }
-        
-        const existingIds = existingSetlists.map(setlist => setlist.id);
-        const currentIds = Object.keys(setlists);
-        
-        // Delete setlists that no longer exist
-        const toDelete = existingIds.filter(id => !currentIds.includes(id));
-        if (toDelete.length > 0) {
-            const { error: deleteError } = await supabase
-                .from('setlists')
-                .delete()
-                .in('id', toDelete);
-            
-            if (deleteError) {
-                console.error('Error deleting setlists:', deleteError);
-            }
-        }
-        
-        // Upsert current setlists
-        const setlistsArray = Object.keys(setlists).map(id => ({
-            id: id,
-            name: setlists[id].name,
-            songs: setlists[id].songs,
-            created: setlists[id].created
-        }));
-        
-        if (setlistsArray.length > 0) {
-            const { error: upsertError } = await supabase
-                .from('setlists')
-                .upsert(setlistsArray);
-            
-            if (upsertError) {
-                console.error('Error saving setlists:', upsertError);
-            } else {
-                console.log('Setlists saved successfully');
-            }
-        }
-    } catch (error) {
-        console.error('Error saving setlists:', error);
-    }
 }
 
 // Create new setlist
 async function createSetlist(e) {
     e.preventDefault();
-    const setlistName = newListInput.value.trim();
+    const setlistName = newSetlistInput.value.trim();
     if (!setlistName) return;
 
     const setlistId = Date.now().toString();
-    setlists[setlistId] = {
+    const newSetlist = {
+        id: setlistId,
         name: setlistName,
-        songs: [],
+        song_ids: [],
+        total_duration_minutes: 0,
         created: Date.now()
     };
 
-    await saveSetlists();
-    renderSetlists();
-    newListInput.value = '';
-    newListInput.focus();
+    try {
+        const { error } = await supabase
+            .from('setlists')
+            .insert([newSetlist]);
+
+        if (error) {
+            console.error('Error creating setlist:', error);
+        } else {
+            setlists[setlistId] = {
+                name: setlistName,
+                song_ids: [],
+                total_duration_minutes: 0,
+                created: Date.now()
+            };
+            renderSetlists();
+            newSetlistInput.value = '';
+            newSetlistInput.focus();
+        }
+    } catch (error) {
+        console.error('Error creating setlist:', error);
+    }
 }
 
-// Render all setlists
+// Render setlists
 function renderSetlists() {
     const setlistIds = Object.keys(setlists);
     
     if (setlistIds.length === 0) {
-        noListsState.style.display = 'block';
-        listsGrid.innerHTML = '';
+        noSetlistsState.style.display = 'block';
+        setlistsGrid.innerHTML = '';
         return;
     }
 
-    noListsState.style.display = 'none';
-    listsGrid.innerHTML = '';
+    noSetlistsState.style.display = 'none';
+    setlistsGrid.innerHTML = '';
 
     // Sort setlists by creation time (oldest first)
     setlistIds.sort((a, b) => setlists[a].created - setlists[b].created);
@@ -338,110 +349,170 @@ function renderSetlists() {
     setlistIds.forEach(setlistId => {
         const setlist = setlists[setlistId];
         const setlistCard = document.createElement('div');
-        setlistCard.className = 'list-card';
+        setlistCard.className = 'setlist-card';
         
         const setlistContent = document.createElement('div');
-        setlistContent.className = 'list-card-content';
+        setlistContent.className = 'setlist-card-content';
         
         const h3 = document.createElement('h3');
         h3.textContent = setlist.name;
         
         const p = document.createElement('p');
-        p.textContent = `${setlist.songs.length} songs`;
+        const songCount = setlist.song_ids.length;
+        const duration = formatDuration(setlist.total_duration_minutes);
+        p.textContent = `${songCount} songs • ${duration}`;
         
         setlistContent.appendChild(h3);
         setlistContent.appendChild(p);
         setlistContent.addEventListener('click', () => showSetlistView(setlistId));
         
         const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'list-delete-btn';
-        deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-label="Delete"><path d="M3 6h18" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M8 6v-2a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="#fff" stroke-width="2" stroke-linecap="round"/><rect x="5" y="6" width="14" height="14" rx="2" fill="none" stroke="#fff" stroke-width="2"/><path d="M10 11v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M14 11v6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>';
+        deleteBtn.className = 'setlist-delete-btn';
+        deleteBtn.innerHTML = '×';
         deleteBtn.addEventListener('click', async (e) => {
             e.stopPropagation();
             if (confirm(`Are you sure you want to delete "${setlist.name}"?`)) {
-                delete setlists[setlistId];
-                await saveSetlists();
-                renderSetlists();
+                await deleteSetlist(setlistId);
             }
         });
         
         setlistCard.appendChild(setlistContent);
         setlistCard.appendChild(deleteBtn);
-        listsGrid.appendChild(setlistCard);
+        setlistsGrid.appendChild(setlistCard);
     });
 }
 
-// Show setlists overview
-function showListsView() {
-    listsView.classList.remove('hidden');
-    listView.classList.add('hidden');
-    currentListId = null;
-    renderSetlists();
-}
-
-// Show individual setlist
-function showSetlistView(setlistId) {
-    currentListId = setlistId;
-    const setlist = setlists[setlistId];
-    
-    listTitle.textContent = setlist.name;
-    listsView.classList.add('hidden');
-    listView.classList.remove('hidden');
-    
-    renderSongs();
-    todoInput.focus();
-}
-
-// Save setlist title
-async function saveSetlistTitle() {
-    if (!currentListId) return;
-    const newTitle = listTitle.textContent.trim();
-    if (newTitle) {
-        setlists[currentListId].name = newTitle;
-        await saveSetlists();
-    }
-}
-
-// Handle title keydown
-function handleTitleKeydown(e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
-        listTitle.blur();
-    }
-}
-
-// Add song to current setlist
+// Add new song
 async function addSong(e) {
     e.preventDefault();
-    if (!currentListId) return;
+    const title = newSongInput.value.trim();
+    const minutes = parseInt(songMinutes.value) || 0;
+    const seconds = parseInt(songSeconds.value) || 0;
     
-    const song = todoInput.value.trim();
-    if (!song) return;
+    if (!title) return;
 
-    // Add new song to the end
-    setlists[currentListId].songs.push(song);
-    await saveSetlists();
-    renderSongs();
-    todoInput.value = '';
-    todoInput.focus();
+    const songId = Date.now().toString();
+    const newSong = {
+        id: songId,
+        title: title,
+        duration_minutes: minutes,
+        duration_seconds: seconds,
+        category: 'general',
+        notes: '',
+        created: Date.now()
+    };
+
+    try {
+        const { error } = await supabase
+            .from('songs')
+            .insert([newSong]);
+
+        if (error) {
+            console.error('Error adding song:', error);
+        } else {
+            songs[songId] = {
+                title: title,
+                duration_minutes: minutes,
+                duration_seconds: seconds,
+                category: 'general',
+                notes: '',
+                created: Date.now()
+            };
+            renderSongs();
+            newSongInput.value = '';
+            songMinutes.value = '';
+            songSeconds.value = '';
+            newSongInput.focus();
+        }
+    } catch (error) {
+        console.error('Error adding song:', error);
+    }
 }
 
-// Render songs in current setlist
+// Render songs
 function renderSongs() {
-    if (!currentListId) return;
+    const songIds = Object.keys(songs);
     
-    const setlist = setlists[currentListId];
-    todoList.innerHTML = '';
-    
-    if (setlist.songs.length === 0) {
-        emptyState.style.display = 'block';
+    if (songIds.length === 0) {
+        noSongsState.style.display = 'block';
+        songsList.innerHTML = '';
         return;
     }
 
-    emptyState.style.display = 'none';
+    noSongsState.style.display = 'none';
+    songsList.innerHTML = '';
+
+    // Sort songs alphabetically
+    songIds.sort((a, b) => songs[a].title.localeCompare(songs[b].title));
+
+    songIds.forEach(songId => {
+        const song = songs[songId];
+        const songItem = document.createElement('div');
+        songItem.className = 'song-item';
+        
+        const songInfo = document.createElement('div');
+        songInfo.className = 'song-info';
+        
+        const songTitle = document.createElement('div');
+        songTitle.className = 'song-title';
+        songTitle.textContent = song.title;
+        
+        const songDuration = document.createElement('div');
+        songDuration.className = 'song-duration';
+        songDuration.textContent = formatSongDuration(song.duration_minutes, song.duration_seconds);
+        
+        songInfo.appendChild(songTitle);
+        songInfo.appendChild(songDuration);
+        
+        const songActions = document.createElement('div');
+        songActions.className = 'song-actions';
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'song-action-btn delete';
+        deleteBtn.textContent = 'Delete';
+        deleteBtn.addEventListener('click', () => deleteSong(songId));
+        
+        songActions.appendChild(deleteBtn);
+        
+        songItem.appendChild(songInfo);
+        songItem.appendChild(songActions);
+        songsList.appendChild(songItem);
+    });
+}
+
+// Show setlist view
+function showSetlistView(setlistId) {
+    currentSetlistId = setlistId;
+    showView('setlist');
+}
+
+// Render setlist view
+function renderSetlistView() {
+    if (!currentSetlistId || !setlists[currentSetlistId]) {
+        showView('setlists');
+        return;
+    }
+
+    const setlist = setlists[currentSetlistId];
+    setlistTitle.textContent = setlist.name;
     
-    // Display songs in their current order
-    setlist.songs.forEach((song, index) => {
+    // Calculate and display total duration
+    const totalDuration = calculateSetlistDuration(setlist.song_ids);
+    setlistDuration.textContent = formatDuration(totalDuration);
+    
+    setlistSongs.innerHTML = '';
+    
+    if (setlist.song_ids.length === 0) {
+        emptySetlistState.style.display = 'block';
+        return;
+    }
+
+    emptySetlistState.style.display = 'none';
+    
+    setlist.song_ids.forEach((songId, index) => {
+        const song = songs[songId];
+        if (!song) return; // Song might have been deleted
+        
         const li = document.createElement('li');
         li.dataset.index = index;
         
@@ -459,9 +530,9 @@ function renderSongs() {
         
         li.appendChild(leftButtons);
         
-        // Center - Song name
+        // Center - Song info
         const span = document.createElement('span');
-        span.textContent = song;
+        span.innerHTML = `${song.title} <span class="song-duration-display">${formatSongDuration(song.duration_minutes, song.duration_seconds)}</span>`;
         li.appendChild(span);
         
         // Right side - Down button  
@@ -472,7 +543,7 @@ function renderSongs() {
         downBtn.className = 'move-btn';
         downBtn.innerHTML = '↓';
         downBtn.title = 'Move down';
-        downBtn.disabled = index === setlist.songs.length - 1;
+        downBtn.disabled = index === setlist.song_ids.length - 1;
         downBtn.addEventListener('click', () => moveSong(index, index + 1));
         rightButtons.appendChild(downBtn);
         
@@ -481,61 +552,85 @@ function renderSongs() {
         // Right-click context menu
         li.addEventListener('contextmenu', (e) => {
             e.preventDefault();
-            showContextMenu(e, song, index);
+            showContextMenu(e, songId, index);
         });
         
-        todoList.appendChild(li);
+        setlistSongs.appendChild(li);
     });
+}
+
+// Helper functions
+function formatDuration(totalMinutes) {
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    
+    if (hours > 0) {
+        return `${hours}:${minutes.toString().padStart(2, '0')}h`;
+    }
+    return `${minutes}:00`;
+}
+
+function formatSongDuration(minutes, seconds) {
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function calculateSetlistDuration(songIds) {
+    return songIds.reduce((total, songId) => {
+        const song = songs[songId];
+        if (song) {
+            return total + song.duration_minutes + (song.duration_seconds >= 30 ? 1 : 0);
+        }
+        return total;
+    }, 0);
 }
 
 // Move song up or down
 async function moveSong(fromIndex, toIndex) {
-    if (toIndex < 0 || toIndex >= setlists[currentListId].songs.length) return;
+    if (!currentSetlistId || toIndex < 0 || toIndex >= setlists[currentSetlistId].song_ids.length) return;
     
-    const songs = setlists[currentListId].songs;
-    const song = songs[fromIndex];
+    const setlist = setlists[currentSetlistId];
+    const songIds = [...setlist.song_ids];
+    const songId = songIds[fromIndex];
     
     // Remove from old position
-    songs.splice(fromIndex, 1);
+    songIds.splice(fromIndex, 1);
     
     // Insert at new position
-    songs.splice(toIndex, 0, song);
+    songIds.splice(toIndex, 0, songId);
     
-    await saveSetlists();
-    renderSongs();
+    // Update local state
+    setlists[currentSetlistId].song_ids = songIds;
+    
+    // Update database
+    await updateSetlist(currentSetlistId);
+    renderSetlistView();
 }
 
-// Show context menu
-function showContextMenu(event, song, index) {
-    // Remove existing context menu
+// Context menu for removing songs from setlist
+function showContextMenu(event, songId, index) {
     const existingMenu = document.querySelector('.context-menu');
     if (existingMenu) {
         existingMenu.remove();
     }
     
-    // Create context menu
     const contextMenu = document.createElement('div');
     contextMenu.className = 'context-menu';
     
-    // Delete option
-    const deleteItem = document.createElement('div');
-    deleteItem.className = 'context-menu-item delete';
-    deleteItem.textContent = 'Delete';
-    deleteItem.addEventListener('click', () => {
-        deleteSong(song, index);
+    const removeItem = document.createElement('div');
+    removeItem.className = 'context-menu-item delete';
+    removeItem.textContent = 'Remove from setlist';
+    removeItem.addEventListener('click', () => {
+        removeSongFromSetlist(index);
         contextMenu.remove();
     });
     
-    contextMenu.appendChild(deleteItem);
+    contextMenu.appendChild(removeItem);
     
-    // Position menu
     contextMenu.style.left = event.pageX + 'px';
     contextMenu.style.top = event.pageY + 'px';
     
-    // Add to document
     document.body.appendChild(contextMenu);
     
-    // Remove menu when clicking elsewhere
     const removeMenu = (e) => {
         if (!contextMenu.contains(e.target)) {
             contextMenu.remove();
@@ -543,27 +638,115 @@ function showContextMenu(event, song, index) {
         }
     };
     
-    // Add click listener after a brief delay to prevent immediate removal
     setTimeout(() => {
         document.addEventListener('click', removeMenu);
     }, 10);
 }
 
-
-
-// Delete song function
-async function deleteSong(song, index) {
-    setlists[currentListId].songs.splice(index, 1);
-    await saveSetlists();
-    renderSongs();
-    showUndo(song, index);
+// Remove song from setlist
+async function removeSongFromSetlist(index) {
+    if (!currentSetlistId) return;
+    
+    const setlist = setlists[currentSetlistId];
+    const removedSongId = setlist.song_ids[index];
+    
+    setlist.song_ids.splice(index, 1);
+    await updateSetlist(currentSetlistId);
+    renderSetlistView();
+    
+    // Show undo notification
+    showUndo(() => {
+        setlist.song_ids.splice(index, 0, removedSongId);
+        updateSetlist(currentSetlistId);
+        renderSetlistView();
+    });
 }
 
-// Show undo notification
-function showUndo(song, index) {
+// Database operations
+async function updateSetlist(setlistId) {
+    const setlist = setlists[setlistId];
+    const totalDuration = calculateSetlistDuration(setlist.song_ids);
+    
+    try {
+        const { error } = await supabase
+            .from('setlists')
+            .update({
+                name: setlist.name,
+                song_ids: setlist.song_ids,
+                total_duration_minutes: totalDuration
+            })
+            .eq('id', setlistId);
+
+        if (error) {
+            console.error('Error updating setlist:', error);
+        } else {
+            setlists[setlistId].total_duration_minutes = totalDuration;
+        }
+    } catch (error) {
+        console.error('Error updating setlist:', error);
+    }
+}
+
+async function deleteSetlist(setlistId) {
+    try {
+        const { error } = await supabase
+            .from('setlists')
+            .delete()
+            .eq('id', setlistId);
+
+        if (error) {
+            console.error('Error deleting setlist:', error);
+        } else {
+            delete setlists[setlistId];
+            renderSetlists();
+        }
+    } catch (error) {
+        console.error('Error deleting setlist:', error);
+    }
+}
+
+async function deleteSong(songId) {
+    if (!confirm('Are you sure you want to delete this song?')) return;
+    
+    try {
+        const { error } = await supabase
+            .from('songs')
+            .delete()
+            .eq('id', songId);
+
+        if (error) {
+            console.error('Error deleting song:', error);
+        } else {
+            delete songs[songId];
+            renderSongs();
+        }
+    } catch (error) {
+        console.error('Error deleting song:', error);
+    }
+}
+
+// Save setlist title
+async function saveSetlistTitle() {
+    if (!currentSetlistId) return;
+    const newTitle = setlistTitle.textContent.trim();
+    if (newTitle) {
+        setlists[currentSetlistId].name = newTitle;
+        await updateSetlist(currentSetlistId);
+    }
+}
+
+// Handle title keydown
+function handleTitleKeydown(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        setlistTitle.blur();
+    }
+}
+
+// Undo functionality
+function showUndo(undoCallback) {
     try {
         clearTimeout(undoTimeout);
-        lastDeleted = { item: song, index };
         
         let undoDiv = document.getElementById('undo-div');
         if (!undoDiv) {
@@ -574,33 +757,14 @@ function showUndo(song, index) {
         }
         
         undoDiv.innerHTML = '<button id="undo-btn" class="undo-btn">Undo</button>';
-        document.getElementById('undo-btn').onclick = undoDelete;
+        document.getElementById('undo-btn').onclick = undoCallback;
         undoDiv.style.display = 'flex';
         
         undoTimeout = setTimeout(() => {
             undoDiv.style.display = 'none';
-            lastDeleted = null;
         }, 5000);
     } catch (error) {
         console.error('Error showing undo notification:', error);
-    }
-}
-
-// Undo delete
-async function undoDelete() {
-    if (!lastDeleted || !currentListId) return;
-    
-    try {
-        const { item, index } = lastDeleted;
-        // Restore song at its original position
-        setlists[currentListId].songs.splice(index, 0, item);
-        await saveSetlists();
-        renderSongs();
-        
-        document.getElementById('undo-div').style.display = 'none';
-        lastDeleted = null;
-    } catch (error) {
-        console.error('Error during undo:', error);
     }
 }
 

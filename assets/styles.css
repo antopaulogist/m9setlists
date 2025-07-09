@@ -29,6 +29,38 @@ h1 {
     margin-top: 40px;
 }
 
+/* Navigation Tabs */
+.nav-tabs {
+    display: flex;
+    justify-content: center;
+    background: #fff;
+    border-bottom: 1px solid #ddd;
+    margin: 0;
+    padding: 0;
+}
+
+.nav-tab {
+    background: none;
+    border: none;
+    padding: 15px 30px;
+    font-size: 16px;
+    cursor: pointer;
+    color: #666;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+}
+
+.nav-tab:hover {
+    color: #333;
+    background: #f8f9fa;
+}
+
+.nav-tab.active {
+    color: #007bff;
+    border-bottom-color: #007bff;
+    background: #fff;
+}
+
 /* View Management */
 .view {
     display: block;
@@ -38,8 +70,9 @@ h1 {
     display: none;
 }
 
-/* Lists Overview */
-#lists-container {
+/* Container Styles */
+#setlists-container,
+#songs-container {
     background: #fff;
     max-width: 400px;
     margin: 40px auto;
@@ -48,14 +81,16 @@ h1 {
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-#lists-grid {
+#setlists-grid,
+#songs-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
     margin-top: 20px;
 }
 
-.list-card {
+/* Setlist Cards */
+.setlist-card {
     background: #f9f9f9;
     padding: 8px 12px;
     border-radius: 6px;
@@ -69,11 +104,11 @@ h1 {
     gap: 10px;
 }
 
-.list-card:hover {
+.setlist-card:hover {
     background: #e9ecef;
 }
 
-.list-card-content {
+.setlist-card-content {
     flex: 1;
     cursor: pointer;
     display: flex;
@@ -81,19 +116,19 @@ h1 {
     justify-content: center;
 }
 
-.list-card h3 {
+.setlist-card h3 {
     margin: 0 0 2px 0;
     font-size: 15px;
     color: #333;
 }
 
-.list-card p {
+.setlist-card p {
     margin: 0;
     font-size: 13px;
     color: #666;
 }
 
-.list-delete-btn {
+.setlist-delete-btn {
     background: #dc3545;
     color: #fff;
     border: none;
@@ -110,19 +145,156 @@ h1 {
     box-sizing: border-box;
 }
 
-.list-delete-btn:hover {
+.setlist-delete-btn:hover {
     background: #a71d2a;
     transform: translateY(-1px);
 }
 
-.list-delete-btn:active {
+.setlist-delete-btn:active {
     transform: translateY(0);
 }
 
-/* List Header */
-#list-header {
+/* Song Library Styles */
+.song-item {
+    background: #f9f9f9;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.2s;
+}
+
+.song-item:hover {
+    background: #e9ecef;
+}
+
+.song-info {
+    flex: 1;
+    text-align: left;
+}
+
+.song-title {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 2px;
+}
+
+.song-duration {
+    font-size: 13px;
+    color: #666;
+}
+
+.song-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.song-action-btn {
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.song-action-btn:hover {
+    background: #5a6268;
+}
+
+.song-action-btn.delete {
+    background: #dc3545;
+}
+
+.song-action-btn.delete:hover {
+    background: #a71d2a;
+}
+
+/* Input Row Styles */
+#input-row,
+#song-input-row {
+    background: #f9f9f9;
+    margin-bottom: 10px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+}
+
+#new-setlist-input,
+#new-song-input {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    margin-bottom: 0;
+    height: 48px;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#new-setlist-input:focus,
+#new-song-input:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+#song-minutes,
+#song-seconds {
+    padding: 12px 8px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    height: 48px;
+    box-sizing: border-box;
+    outline: none;
+    text-align: center;
+}
+
+#create-setlist-btn,
+#add-song-btn {
+    padding: 12px 16px;
+    font-size: 20px;
+    background: #007bff;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    height: 48px;
+    min-width: 48px;
     display: flex;
     align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    box-sizing: border-box;
+}
+
+#create-setlist-btn:hover,
+#add-song-btn:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+}
+
+#create-setlist-btn:active,
+#add-song-btn:active {
+    transform: translateY(0);
+}
+
+/* Setlist View Styles */
+#setlist-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     max-width: 400px;
     margin: 20px auto 0;
     padding: 0 20px;
@@ -143,7 +315,7 @@ h1 {
     background: #5a6268;
 }
 
-#list-title {
+#setlist-title {
     flex: 1;
     margin: 0 15px;
     font-size: 24px;
@@ -154,13 +326,19 @@ h1 {
     transition: border-color 0.2s;
 }
 
-#list-title:focus {
+#setlist-title:focus {
     outline: none;
     border-color: #007bff;
     background: #fff;
 }
 
-#todo-container {
+#setlist-duration {
+    font-size: 16px;
+    color: #666;
+    font-weight: bold;
+}
+
+#setlist-container {
     background: #fff;
     max-width: 400px;
     margin: 40px auto;
@@ -169,70 +347,13 @@ h1 {
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-#input-row {
-    background: #f9f9f9;
-    margin-bottom: 10px;
-    padding: 12px 16px;
-    border-radius: 8px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    font-size: 16px;
-}
-
-#todo-input, #new-list-input {
-    flex: 1;
-    padding: 12px 16px;
-    font-size: 16px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    margin-bottom: 0;
-    height: 48px;
-    box-sizing: border-box;
-    outline: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
-}
-
-#todo-input:focus, #new-list-input:focus {
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
-}
-
-#addBtn, #create-list-btn {
-    padding: 12px 16px;
-    font-size: 20px;
-    background: #007bff;
-    color: #fff;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
-    height: 48px;
-    min-width: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 600;
-    box-sizing: border-box;
-}
-
-#addBtn:hover, #create-list-btn:hover {
-    background: #0056b3;
-    transform: translateY(-1px);
-}
-
-#addBtn:active, #create-list-btn:active {
-    transform: translateY(0);
-}
-
-#todo-list {
+#setlist-songs {
     list-style: none;
     padding: 0;
     margin-top: 20px;
 }
 
-#todo-list li {
+#setlist-songs li {
     background: #f9f9f9;
     margin-bottom: 8px;
     padding: 8px 12px;
@@ -248,11 +369,9 @@ h1 {
     user-select: none;
 }
 
-#todo-list li:hover {
+#setlist-songs li:hover {
     background: #e9ecef;
 }
-
-
 
 .move-buttons {
     display: flex;
@@ -301,13 +420,19 @@ h1 {
     transform: none;
 }
 
-#todo-list li span {
+#setlist-songs li span {
     flex: 1;
     text-align: center;
     font-size: 15px;
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.song-duration-display {
+    font-size: 12px;
+    color: #666;
+    margin-left: 8px;
 }
 
 /* Context Menu Styles */
@@ -376,44 +501,54 @@ h1 {
 
 /* Media queries for mobile responsiveness */
 @media (max-width: 500px) {
-    #lists-container {
+    .nav-tab {
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+
+    #setlists-container,
+    #songs-container {
         max-width: 90vw;
         padding: 15px 15px 10px 15px;
         margin: 20px auto;
     }
     
-    #todo-container {
+    #setlist-container {
         max-width: 90vw;
         padding: 15px 15px 10px 15px;
         margin: 20px auto;
     }
     
-    #input-row {
+    #input-row,
+    #song-input-row {
         padding: 10px 12px;
         gap: 8px;
+        flex-wrap: wrap;
     }
     
-    #todo-input, #new-list-input {
+    #new-setlist-input,
+    #new-song-input {
         font-size: 16px;
         padding: 10px 12px;
         height: 42px;
     }
     
-    #addBtn, #create-list-btn {
+    #create-setlist-btn,
+    #add-song-btn {
         font-size: 18px;
         padding: 10px 12px;
         height: 42px;
         min-width: 42px;
     }
     
-    #todo-list li {
+    #setlist-songs li {
         font-size: 14px;
         padding: 6px 10px;
         min-height: 32px;
         gap: 6px;
     }
     
-    #todo-list li span {
+    #setlist-songs li span {
         font-size: 14px;
     }
     
@@ -423,37 +558,38 @@ h1 {
         font-size: 14px;
     }
     
-    #lists-grid {
+    #setlists-grid,
+    #songs-list {
         gap: 8px;
     }
     
-    .list-card {
+    .setlist-card {
         padding: 6px 10px;
         min-height: 32px;
         gap: 6px;
     }
     
-    .list-card h3 {
+    .setlist-card h3 {
         font-size: 14px;
     }
     
-    .list-card p {
+    .setlist-card p {
         font-size: 12px;
     }
     
-    .list-delete-btn {
+    .setlist-delete-btn {
         height: 32px;
         min-width: 32px;
         padding: 6px 10px;
         font-size: 13px;
     }
     
-    #list-header {
+    #setlist-header {
         margin: 10px auto 0;
         padding: 0 10px;
     }
     
-    #list-title {
+    #setlist-title {
         font-size: 20px;
         margin: 0 10px;
     }
@@ -461,5 +597,12 @@ h1 {
     #back-btn {
         padding: 6px 10px;
         font-size: 14px;
+    }
+
+    #song-minutes,
+    #song-seconds {
+        width: 50px;
+        height: 42px;
+        padding: 10px 4px;
     }
 }
