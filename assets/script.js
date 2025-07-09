@@ -86,8 +86,6 @@ async function init() {
         setupRealTimeSync();
         bindEvents();
         showView('setlists');
-        
-        showSuccess('Application loaded successfully!');
     } catch (error) {
         console.error('Failed to initialize app:', error);
         showError('Failed to load application. Please refresh the page.');
