@@ -10,12 +10,20 @@ let supabase;
 // DOM Elements
 const navTabs = document.querySelectorAll('.nav-tab');
 
+// Global UI Elements
+const globalError = document.getElementById('global-error');
+const errorMessage = document.getElementById('error-message');
+const globalSuccess = document.getElementById('global-success');
+const successMessage = document.getElementById('success-message');
+const loadingOverlay = document.getElementById('loading-overlay');
+
 // Setlists View Elements
 const setlistsView = document.getElementById('setlists-view');
 const newSetlistForm = document.getElementById('new-setlist-form');
 const newSetlistInput = document.getElementById('new-setlist-input');
 const setlistsGrid = document.getElementById('setlists-grid');
 const noSetlistsState = document.getElementById('no-setlists-state');
+const setlistsLoading = document.getElementById('setlists-loading');
 
 // Songs View Elements
 const songsView = document.getElementById('songs-view');
@@ -25,6 +33,7 @@ const songMinutes = document.getElementById('song-minutes');
 const songSeconds = document.getElementById('song-seconds');
 const songsList = document.getElementById('songs-list');
 const noSongsState = document.getElementById('no-songs-state');
+const songsLoading = document.getElementById('songs-loading');
 
 // Setlist Builder View Elements
 const setlistBuilderView = document.getElementById('setlist-builder-view');
@@ -55,15 +64,20 @@ let lastDeleted = null;
 let undoTimeout = null;
 let realtimeChannel = null;
 
+// Search debounce
+let searchTimeout = null;
+
 // Initialize app
 async function init() {
     // Wait for Supabase to load
     if (!window.supabase) {
-        console.error('Supabase library not loaded');
+        showError('Application failed to load. Please refresh the page.');
         return;
     }
     
     try {
+        showLoading(true);
+        
         // Initialize Supabase
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log('Supabase initialized successfully');
@@ -72,8 +86,52 @@ async function init() {
         setupRealTimeSync();
         bindEvents();
         showView('setlists');
+        
+        showSuccess('Application loaded successfully!');
     } catch (error) {
         console.error('Failed to initialize app:', error);
+        showError('Failed to load application. Please refresh the page.');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// UI Feedback Functions
+function showError(message) {
+    errorMessage.textContent = message;
+    globalError.style.display = 'block';
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        globalError.style.display = 'none';
+    }, 5000);
+}
+
+function showSuccess(message) {
+    successMessage.textContent = message;
+    globalSuccess.style.display = 'block';
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+        globalSuccess.style.display = 'none';
+    }, 3000);
+}
+
+function showLoading(show) {
+    loadingOverlay.classList.toggle('hidden', !show);
+}
+
+function showViewLoading(viewType, show) {
+    if (viewType === 'setlists') {
+        setlistsLoading.classList.toggle('hidden', !show);
+        setlistsGrid.classList.toggle('hidden', show);
+    } else if (viewType === 'songs') {
+        songsLoading.classList.toggle('hidden', !show);
+        songsList.classList.toggle('hidden', show);
+    }
+}
+
+function showConfirmation(message, onConfirm) {
+    if (confirm(message)) {
+        onConfirm();
     }
 }
 
@@ -96,10 +154,37 @@ function bindEvents() {
     // Songs
     newSongForm.addEventListener('submit', addSong);
 
-    // Builder
+    // Builder - Debounced search
     builderBackBtn.addEventListener('click', () => showView('setlists'));
     saveSetlistBtn.addEventListener('click', saveBuilderSetlist);
-    songSearch.addEventListener('input', filterAvailableSongs);
+    songSearch.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            filterAvailableSongs(e.target.value);
+        }, 300); // 300ms debounce
+    });
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', handleKeyboardShortcuts);
+}
+
+function handleKeyboardShortcuts(e) {
+    // Ctrl/Cmd + 1 = Setlists view
+    if ((e.ctrlKey || e.metaKey) && e.key === '1') {
+        e.preventDefault();
+        showView('setlists');
+    }
+    // Ctrl/Cmd + 2 = Songs view
+    if ((e.ctrlKey || e.metaKey) && e.key === '2') {
+        e.preventDefault();
+        showView('songs');
+    }
+    // Escape = Close current view/modal
+    if (e.key === 'Escape') {
+        if (currentView === 'setlist' || currentView === 'builder') {
+            showView('setlists');
+        }
+    }
 }
 
 // Navigation
@@ -144,6 +229,7 @@ async function loadData() {
     }
     
     try {
+        showViewLoading('setlists', true);
         // Load setlists
         const { data: setlistsData, error: setlistsError } = await supabase
             .from('setlists')
@@ -151,6 +237,7 @@ async function loadData() {
         
         if (setlistsError) {
             console.error('Error loading setlists:', setlistsError);
+            showError('Failed to load setlists.');
         } else {
             setlists = {};
             setlistsData.forEach(setlist => {
@@ -163,6 +250,9 @@ async function loadData() {
             });
         }
 
+        showViewLoading('setlists', false);
+
+        showViewLoading('songs', true);
         // Load songs
         const { data: songsData, error: songsError } = await supabase
             .from('songs')
@@ -170,6 +260,7 @@ async function loadData() {
         
         if (songsError) {
             console.error('Error loading songs:', songsError);
+            showError('Failed to load songs.');
         } else {
             songs = {};
             songsData.forEach(song => {
@@ -184,9 +275,12 @@ async function loadData() {
             });
         }
 
+        showViewLoading('songs', false);
+
         console.log('Data loaded successfully');
     } catch (error) {
         console.error('Error loading data:', error);
+        showError('Failed to load data.');
     }
 }
 
@@ -338,6 +432,7 @@ async function createSetlist(e) {
 
         if (error) {
             console.error('Error creating setlist:', error);
+            showError('Failed to create setlist.');
         } else {
             setlists[setlistId] = {
                 name: setlistName,
@@ -348,9 +443,11 @@ async function createSetlist(e) {
             renderSetlists();
             newSetlistInput.value = '';
             newSetlistInput.focus();
+            showSuccess('Setlist created successfully!');
         }
     } catch (error) {
         console.error('Error creating setlist:', error);
+        showError('Failed to create setlist.');
     }
 }
 
@@ -451,6 +548,7 @@ async function addSong(e) {
 
         if (error) {
             console.error('Error adding song:', error);
+            showError('Failed to add song.');
         } else {
             songs[songId] = {
                 title: title,
@@ -465,9 +563,11 @@ async function addSong(e) {
             songMinutes.value = '';
             songSeconds.value = '';
             newSongInput.focus();
+            showSuccess('Song added successfully!');
         }
     } catch (error) {
         console.error('Error adding song:', error);
+        showError('Failed to add song.');
     }
 }
 
@@ -512,7 +612,11 @@ function renderSongs() {
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'song-action-btn delete';
         deleteBtn.textContent = 'Delete';
-        deleteBtn.addEventListener('click', () => deleteSong(songId));
+        deleteBtn.addEventListener('click', () => {
+            showConfirmation(`Are you sure you want to delete "${song.title}"?`, () => {
+                deleteSong(songId);
+            });
+        });
         
         songActions.appendChild(deleteBtn);
         
@@ -759,7 +863,7 @@ function updateBuilderDuration() {
 }
 
 // Filter available songs
-function filterAvailableSongs() {
+function filterAvailableSongs(searchTerm) {
     renderAvailableSongs();
 }
 
@@ -779,6 +883,7 @@ async function saveBuilderSetlist() {
     // Reset builder state
     builderSetlistId = null;
     builderSongs = [];
+    showSuccess('Setlist saved successfully!');
 }
 
 // Helper functions
@@ -901,11 +1006,13 @@ async function updateSetlist(setlistId) {
 
         if (error) {
             console.error('Error updating setlist:', error);
+            showError('Failed to save setlist.');
         } else {
             setlists[setlistId].total_duration_minutes = totalDuration;
         }
     } catch (error) {
         console.error('Error updating setlist:', error);
+        showError('Failed to save setlist.');
     }
 }
 
@@ -918,12 +1025,15 @@ async function deleteSetlist(setlistId) {
 
         if (error) {
             console.error('Error deleting setlist:', error);
+            showError('Failed to delete setlist.');
         } else {
             delete setlists[setlistId];
             renderSetlists();
+            showSuccess('Setlist deleted successfully!');
         }
     } catch (error) {
         console.error('Error deleting setlist:', error);
+        showError('Failed to delete setlist.');
     }
 }
 
@@ -938,12 +1048,15 @@ async function deleteSong(songId) {
 
         if (error) {
             console.error('Error deleting song:', error);
+            showError('Failed to delete song.');
         } else {
             delete songs[songId];
             renderSongs();
+            showSuccess('Song deleted successfully!');
         }
     } catch (error) {
         console.error('Error deleting song:', error);
+        showError('Failed to delete song.');
     }
 }
 
@@ -954,6 +1067,7 @@ async function saveSetlistTitle() {
     if (newTitle) {
         setlists[currentSetlistId].name = newTitle;
         await updateSetlist(currentSetlistId);
+        showSuccess('Setlist title updated successfully!');
     }
 }
 

@@ -5,84 +5,239 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mickey 9s Setlist</title>
     <link rel="stylesheet" href="assets/styles.css">
+    <meta name="description" content="Professional setlist management for Mickey 9s band">
+    <meta name="theme-color" content="#3b82f6">
 </head>
 <body>
     <div id="app">
         <!-- Navigation Tabs -->
-        <nav id="main-nav" class="nav-tabs">
-            <button class="nav-tab active" data-view="setlists">Setlists</button>
-            <button class="nav-tab" data-view="songs">Song Library</button>
+        <nav id="main-nav" class="nav-tabs" role="navigation" aria-label="Main navigation">
+            <button class="nav-tab active" data-view="setlists" aria-label="View setlists">
+                <span>Setlists</span>
+            </button>
+            <button class="nav-tab" data-view="songs" aria-label="View song library">
+                <span>Song Library</span>
+            </button>
         </nav>
 
+        <!-- Global Error Display -->
+        <div id="global-error" class="error-state" role="alert" aria-live="polite">
+            <p id="error-message"></p>
+            <button class="btn btn-sm btn-secondary" onclick="this.parentElement.style.display='none'">
+                Dismiss
+            </button>
+        </div>
+
+        <!-- Global Success Display -->
+        <div id="global-success" class="success-state" role="status" aria-live="polite">
+            <p id="success-message"></p>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Loading...</p>
+            </div>
+        </div>
+
         <!-- Setlists View (Home) -->
-        <div id="setlists-view" class="view">
-            <h1>Mickey 9s Setlists</h1>
-            <div id="setlists-container">
-                <form id="new-setlist-form" autocomplete="off">
+        <main id="setlists-view" class="view">
+            <header class="page-header">
+                <h1 class="page-title">Mickey 9s Setlists</h1>
+                <p class="page-subtitle">Manage your performance setlists</p>
+            </header>
+            
+            <div id="setlists-container" class="card">
+                <form id="new-setlist-form" autocomplete="off" role="form">
                     <div id="input-row">
                         <label for="new-setlist-input" class="visually-hidden">Create a new setlist</label>
-                        <input type="text" id="new-setlist-input" placeholder="Create a new setlist..." maxlength="50">
-                        <button id="create-setlist-btn" type="submit" aria-label="Create setlist">+</button>
+                        <input 
+                            type="text" 
+                            id="new-setlist-input" 
+                            class="form-input"
+                            placeholder="Create a new setlist..." 
+                            maxlength="50"
+                            required
+                            aria-describedby="setlist-input-help"
+                        >
+                        <button id="create-setlist-btn" type="submit" class="btn btn-primary" aria-label="Create setlist">
+                            <span aria-hidden="true">+</span>
+                        </button>
+                    </div>
+                    <div id="setlist-input-help" class="input-help">
+                        Press Enter or click + to create a setlist
                     </div>
                 </form>
-                <div id="setlists-grid"></div>
-                <p id="no-setlists-state" class="empty-state">No setlists yet!</p>
+
+                <!-- Loading State -->
+                <div id="setlists-loading" class="loading-state hidden">
+                    <div class="skeleton-grid">
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                        <div class="skeleton-card"></div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div id="setlists-grid" role="list" aria-label="Your setlists"></div>
+                
+                <!-- Empty State -->
+                <div id="no-setlists-state" class="empty-state">
+                    <h3>No setlists yet!</h3>
+                    <p>Create your first setlist to get started</p>
+                </div>
             </div>
-        </div>
+        </main>
 
         <!-- Song Library View -->
-        <div id="songs-view" class="view hidden">
-            <h1>Song Library</h1>
-            <div id="songs-container">
-                <form id="new-song-form" autocomplete="off">
+        <main id="songs-view" class="view hidden">
+            <header class="page-header">
+                <h1 class="page-title">Song Library</h1>
+                <p class="page-subtitle">Manage your song collection</p>
+            </header>
+            
+            <div id="songs-container" class="card">
+                <form id="new-song-form" autocomplete="off" role="form">
                     <div id="song-input-row">
                         <label for="new-song-input" class="visually-hidden">Add a new song</label>
-                        <input type="text" id="new-song-input" placeholder="Song title..." maxlength="100">
-                        <input type="number" id="song-minutes" placeholder="Min" min="0" max="30" style="width: 60px;">
-                        <span>:</span>
-                        <input type="number" id="song-seconds" placeholder="Sec" min="0" max="59" style="width: 60px;">
-                        <button id="add-song-btn" type="submit" aria-label="Add song">+</button>
+                        <input 
+                            type="text" 
+                            id="new-song-input" 
+                            class="form-input"
+                            placeholder="Song title..." 
+                            maxlength="100"
+                            required
+                            aria-describedby="song-input-help"
+                        >
+                        <div class="duration-inputs">
+                            <label for="song-minutes" class="visually-hidden">Duration minutes</label>
+                            <input 
+                                type="number" 
+                                id="song-minutes" 
+                                class="form-input"
+                                placeholder="Min" 
+                                min="0" 
+                                max="30"
+                                aria-label="Minutes"
+                            >
+                            <span aria-hidden="true">:</span>
+                            <label for="song-seconds" class="visually-hidden">Duration seconds</label>
+                            <input 
+                                type="number" 
+                                id="song-seconds" 
+                                class="form-input"
+                                placeholder="Sec" 
+                                min="0" 
+                                max="59"
+                                aria-label="Seconds"
+                            >
+                        </div>
+                        <button id="add-song-btn" type="submit" class="btn btn-primary" aria-label="Add song">
+                            <span aria-hidden="true">+</span>
+                        </button>
+                    </div>
+                    <div id="song-input-help" class="input-help">
+                        Add duration to help plan your setlists
                     </div>
                 </form>
-                <div id="songs-list"></div>
-                <p id="no-songs-state" class="empty-state">No songs in library yet!</p>
+
+                <!-- Loading State -->
+                <div id="songs-loading" class="loading-state hidden">
+                    <div class="skeleton-list">
+                        <div class="skeleton-song"></div>
+                        <div class="skeleton-song"></div>
+                        <div class="skeleton-song"></div>
+                    </div>
+                </div>
+
+                <!-- Content -->
+                <div id="songs-list" role="list" aria-label="Your songs"></div>
+                
+                <!-- Empty State -->
+                <div id="no-songs-state" class="empty-state">
+                    <h3>No songs in library yet!</h3>
+                    <p>Add songs to build your setlists</p>
+                </div>
             </div>
-        </div>
+        </main>
 
         <!-- Setlist Builder View -->
-        <div id="setlist-builder-view" class="view hidden">
-            <div id="builder-header">
-                <button id="builder-back-btn" aria-label="Back to setlists">←</button>
+        <main id="setlist-builder-view" class="view hidden">
+            <header id="builder-header">
+                <button id="builder-back-btn" class="btn btn-secondary" aria-label="Back to setlists">
+                    <span aria-hidden="true">←</span>
+                    <span class="sr-only">Back</span>
+                </button>
                 <h1 id="builder-title">Build Setlist</h1>
-                <button id="save-setlist-btn" aria-label="Save setlist">Save</button>
-            </div>
+                <button id="save-setlist-btn" class="btn btn-success" aria-label="Save setlist">
+                    Save
+                </button>
+            </header>
+            
             <div id="builder-container">
-                <div id="song-selector">
-                    <h3>Available Songs</h3>
-                    <input type="text" id="song-search" placeholder="Search songs...">
-                    <div id="available-songs"></div>
-                </div>
-                <div id="setlist-preview">
-                    <h3>Setlist Preview</h3>
-                    <div id="total-duration">Total: 0:00</div>
-                    <ul id="preview-list"></ul>
-                </div>
+                <section id="song-selector" class="card" aria-labelledby="available-songs-title">
+                    <h2 id="available-songs-title">Available Songs</h2>
+                    <div class="search-container">
+                        <label for="song-search" class="visually-hidden">Search songs</label>
+                        <input 
+                            type="text" 
+                            id="song-search" 
+                            class="form-input"
+                            placeholder="Search songs..."
+                            aria-describedby="search-help"
+                        >
+                        <div id="search-help" class="input-help">
+                            Type to filter your song library
+                        </div>
+                    </div>
+                    <div id="available-songs" role="list" aria-label="Available songs to add"></div>
+                </section>
+                
+                <section id="setlist-preview" class="card" aria-labelledby="preview-title">
+                    <h2 id="preview-title">Setlist Preview</h2>
+                    <div id="total-duration" class="duration-display" aria-live="polite">
+                        Total: 0:00
+                    </div>
+                    <ul id="preview-list" role="list" aria-label="Songs in setlist"></ul>
+                </section>
             </div>
-        </div>
+        </main>
 
         <!-- Individual Setlist View -->
-        <div id="setlist-view" class="view hidden">
-            <div id="setlist-header">
-                <button id="back-btn" aria-label="Back to setlists">←</button>
-                <h1 id="setlist-title" contenteditable="true">Setlist Name</h1>
-                <div id="setlist-duration">0:00</div>
+        <main id="setlist-view" class="view hidden">
+            <header id="setlist-header">
+                <button id="back-btn" class="btn btn-secondary" aria-label="Back to setlists">
+                    <span aria-hidden="true">←</span>
+                    <span class="sr-only">Back</span>
+                </button>
+                <h1 
+                    id="setlist-title" 
+                    contenteditable="true" 
+                    role="textbox"
+                    aria-label="Setlist name (editable)"
+                    tabindex="0"
+                >
+                    Setlist Name
+                </h1>
+                <div id="setlist-duration" class="duration-display" aria-live="polite">
+                    0:00
+                </div>
+            </header>
+            
+            <div id="setlist-container" class="card">
+                <ul id="setlist-songs" role="list" aria-live="polite" aria-label="Songs in setlist"></ul>
+                
+                <!-- Empty State -->
+                <div id="empty-setlist-state" class="empty-state">
+                    <h3>No songs in this setlist!</h3>
+                    <p>Use the "Build" button to add songs from your library</p>
+                </div>
             </div>
-            <div id="setlist-container">
-                <ul id="setlist-songs" aria-live="polite"></ul>
-                <p id="empty-setlist-state" class="empty-state">No songs in this setlist!</p>
-            </div>
-        </div>
+        </main>
     </div>
+
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="assets/script.js"></script>
 </body>
