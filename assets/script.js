@@ -16,45 +16,6 @@ const errorMessage = document.getElementById('error-message');
 const globalSuccess = document.getElementById('global-success');
 const successMessage = document.getElementById('success-message');
 const loadingOverlay = document.getElementById('loading-overlay');
-const multiSelectBar = document.getElementById('multi-select-bar');
-const selectedCountSpan = multiSelectBar.querySelector('.selected-count');
-const addSelectedBtn = document.getElementById('add-selected-btn');
-
-// Setlists View Elements
-const setlistsView = document.getElementById('setlists-view');
-const newSetlistForm = document.getElementById('new-setlist-form');
-const newSetlistInput = document.getElementById('new-setlist-input');
-const setlistsGrid = document.getElementById('setlists-grid');
-const noSetlistsState = document.getElementById('no-setlists-state');
-const setlistsLoading = document.getElementById('setlists-loading');
-
-// Songs View Elements
-const songsView = document.getElementById('songs-view');
-const newSongForm = document.getElementById('new-song-form');
-const newSongInput = document.getElementById('new-song-input');
-const songMinutes = document.getElementById('song-minutes');
-const songSeconds = document.getElementById('song-seconds');
-const songsList = document.getElementById('songs-list');
-const noSongsState = document.getElementById('no-songs-state');
-const songsLoading = document.getElementById('songs-loading');
-
-// Setlist Builder View Elements
-const setlistBuilderView = document.getElementById('setlist-builder-view');
-const builderBackBtn = document.getElementById('builder-back-btn');
-const builderTitle = document.getElementById('builder-title');
-const saveSetlistBtn = document.getElementById('save-setlist-btn');
-const songSearch = document.getElementById('song-search');
-const availableSongs = document.getElementById('available-songs');
-const previewList = document.getElementById('preview-list');
-const totalDurationEl = document.getElementById('total-duration');
-
-// Setlist View Elements
-const setlistView = document.getElementById('setlist-view');
-const backBtn = document.getElementById('back-btn');
-const setlistTitle = document.getElementById('setlist-title');
-const setlistDuration = document.getElementById('setlist-duration');
-const setlistSongs = document.getElementById('setlist-songs');
-const emptySetlistState = document.getElementById('empty-setlist-state');
 
 // State
 let currentView = 'setlists';
@@ -66,22 +27,14 @@ let songs = {};
 let lastDeleted = null;
 let undoTimeout = null;
 let realtimeChannel = null;
+let selectedSongs = new Set();
+let dragSource = null;
 
 // Search debounce
 let searchTimeout = null;
 
-// State
-let selectedSongs = new Set();
-let dragSource = null;
-
 // Initialize app
 async function init() {
-    // Wait for Supabase to load
-    if (!window.supabase) {
-        showError('Application failed to load. Please refresh the page.');
-        return;
-    }
-    
     try {
         showLoading(true);
         
@@ -102,13 +55,18 @@ async function init() {
 }
 
 // UI Feedback Functions
-function showError(message) {
-    errorMessage.textContent = message;
-    globalError.style.display = 'block';
-    // Auto-hide after 5 seconds
+function showError(message, duration = 5000) {
+    const errorEl = document.getElementById('global-error');
+    const messageEl = document.getElementById('error-message');
+    if (!errorEl || !messageEl) return;
+    
+    messageEl.textContent = message;
+    errorEl.style.display = 'flex';
+    
+    // Auto-hide after duration
     setTimeout(() => {
-        globalError.style.display = 'none';
-    }, 5000);
+        errorEl.style.display = 'none';
+    }, duration);
 }
 
 function showSuccess(message) {
@@ -143,7 +101,7 @@ function showConfirmation(message, onConfirm) {
 // Event listeners
 function bindEvents() {
     // Navigation
-    navTabs.forEach(tab => {
+    document.querySelectorAll('.nav-tab').forEach(tab => {
         tab.addEventListener('click', (e) => {
             const view = e.currentTarget.dataset.view;
             showView(view);
@@ -151,31 +109,54 @@ function bindEvents() {
     });
 
     // Setlists
-    newSetlistForm.addEventListener('submit', createSetlist);
-    backBtn.addEventListener('click', () => showView('setlists'));
-    setlistTitle.addEventListener('blur', saveSetlistTitle);
-    setlistTitle.addEventListener('keydown', handleTitleKeydown);
+    document.getElementById('new-setlist-form')?.addEventListener('submit', createSetlist);
+    document.getElementById('back-btn')?.addEventListener('click', () => showView('setlists'));
+    document.getElementById('setlist-title')?.addEventListener('blur', saveSetlistTitle);
+    document.getElementById('setlist-title')?.addEventListener('keydown', handleTitleKeydown);
 
     // Songs
-    newSongForm.addEventListener('submit', addSong);
+    document.getElementById('new-song-form')?.addEventListener('submit', addSong);
 
     // Multi-select
-    addSelectedBtn.addEventListener('click', addSelectedSongs);
+    const multiSelectBar = document.getElementById('multi-select-bar');
+    const addSelectedBtn = document.getElementById('add-selected-btn');
+    if (multiSelectBar && addSelectedBtn) {
+        addSelectedBtn.addEventListener('click', addSelectedSongs);
+    }
     
-    // Builder - Debounced search
-    builderBackBtn.addEventListener('click', () => {
-        selectedSongs.clear();
-        showView('setlists');
-    });
+    // Builder
+    const builderBackBtn = document.getElementById('builder-back-btn');
+    const saveSetlistBtn = document.getElementById('save-setlist-btn');
+    const songSearch = document.getElementById('song-search');
+    const previewList = document.getElementById('preview-list');
     
-    // Drag and drop events for preview list
-    previewList.addEventListener('dragstart', handleDragStart);
-    previewList.addEventListener('dragend', handleDragEnd);
-    previewList.addEventListener('dragover', handleDragOver);
-    previewList.addEventListener('drop', handleDrop);
+    if (builderBackBtn) {
+        builderBackBtn.addEventListener('click', () => {
+            selectedSongs.clear();
+            showView('setlists');
+        });
+    }
     
-    // Keyboard shortcuts
-    document.addEventListener('keydown', handleKeyboardShortcuts);
+    if (saveSetlistBtn) {
+        saveSetlistBtn.addEventListener('click', saveBuilderSetlist);
+    }
+    
+    if (songSearch) {
+        songSearch.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                filterAvailableSongs(e.target.value);
+            }, 300); // 300ms debounce
+        });
+    }
+    
+    if (previewList) {
+        // Drag and drop events for preview list
+        previewList.addEventListener('dragstart', handleDragStart);
+        previewList.addEventListener('dragend', handleDragEnd);
+        previewList.addEventListener('dragover', handleDragOver);
+        previewList.addEventListener('drop', handleDrop);
+    }
 }
 
 function handleKeyboardShortcuts(e) {
@@ -234,7 +215,7 @@ function showView(viewName) {
 // Load all data from Supabase
 async function loadData() {
     if (!supabase) {
-        console.error('Supabase not initialized');
+        showError('Database connection failed. Please check your internet connection and refresh the page.');
         return;
     }
     
@@ -247,22 +228,23 @@ async function loadData() {
         
         if (setlistsError) {
             console.error('Error loading setlists:', setlistsError);
-            showError('Failed to load setlists.');
-        } else {
-            setlists = {};
-            setlistsData.forEach(setlist => {
-                setlists[setlist.id] = {
-                    name: setlist.name,
-                    song_ids: setlist.song_ids || [],
-                    total_duration_minutes: setlist.total_duration_minutes || 0,
-                    created: setlist.created
-                };
-            });
+            showError('Failed to load setlists. Please check your internet connection and refresh the page.');
+            return;
         }
 
-        showViewLoading('setlists', false);
+        setlists = {};
+        setlistsData.forEach(setlist => {
+            setlists[setlist.id] = {
+                name: setlist.name,
+                song_ids: setlist.song_ids || [],
+                total_duration_minutes: setlist.total_duration_minutes || 0,
+                created: setlist.created
+            };
+        });
 
+        showViewLoading('setlists', false);
         showViewLoading('songs', true);
+        
         // Load songs
         const { data: songsData, error: songsError } = await supabase
             .from('songs')
@@ -270,27 +252,27 @@ async function loadData() {
         
         if (songsError) {
             console.error('Error loading songs:', songsError);
-            showError('Failed to load songs.');
-        } else {
-            songs = {};
-            songsData.forEach(song => {
-                songs[song.id] = {
-                    title: song.title,
-                    duration_minutes: song.duration_minutes || 0,
-                    duration_seconds: song.duration_seconds || 0,
-                    category: song.category || 'general',
-                    notes: song.notes || '',
-                    created: song.created
-                };
-            });
+            showError('Failed to load songs. Please check your internet connection and refresh the page.');
+            return;
         }
 
-        showViewLoading('songs', false);
+        songs = {};
+        songsData.forEach(song => {
+            songs[song.id] = {
+                title: song.title,
+                duration_minutes: song.duration_minutes || 0,
+                duration_seconds: song.duration_seconds || 0,
+                category: song.category || 'general',
+                notes: song.notes || '',
+                created: song.created
+            };
+        });
 
+        showViewLoading('songs', false);
         console.log('Data loaded successfully');
     } catch (error) {
         console.error('Error loading data:', error);
-        showError('Failed to load data.');
+        showError('Failed to load data. Please check your internet connection and refresh the page.');
     }
 }
 
