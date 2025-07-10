@@ -55,7 +55,6 @@ let songs = {};
 let lastDeleted = null;
 let undoTimeout = null;
 let realtimeChannel = null;
-let selectedSongs = new Set();
 let dragSource = null;
 
 // Search debounce
@@ -191,13 +190,6 @@ function bindEvents() {
 
     // Songs
     document.getElementById('new-song-form')?.addEventListener('submit', addSong);
-
-    // Multi-select
-    const multiSelectBar = document.getElementById('multi-select-bar');
-    const addSelectedBtn = document.getElementById('add-selected-btn');
-    if (multiSelectBar && addSelectedBtn) {
-        addSelectedBtn.addEventListener('click', addSelectedSongs);
-    }
     
     // Builder
     const builderBackBtn = document.getElementById('builder-back-btn');
@@ -206,7 +198,6 @@ function bindEvents() {
     
     if (builderBackBtn) {
         builderBackBtn.addEventListener('click', () => {
-            selectedSongs.clear();
             showView('setlists');
         });
     }
@@ -859,25 +850,10 @@ function renderAvailableSongs() {
         const songItem = document.createElement('div');
         songItem.className = 'builder-song-item';
         
-        // Add checkbox for multi-select
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.className = 'builder-song-checkbox';
-        checkbox.checked = selectedSongs.has(songId);
-        checkbox.addEventListener('change', () => {
-            if (checkbox.checked) {
-                selectedSongs.add(songId);
-            } else {
-                selectedSongs.delete(songId);
-            }
-            updateSelectedCount();
-        });
-        
         // Check if song is already in setlist
         const isInSetlist = builderSongs.includes(songId);
         if (isInSetlist) {
             songItem.classList.add('in-setlist');
-            checkbox.disabled = true;
         }
         
         const songInfo = document.createElement('div');
@@ -901,7 +877,6 @@ function renderAvailableSongs() {
         addBtn.disabled = isInSetlist;
         addBtn.addEventListener('click', () => addSongToBuilder(songId));
         
-        songItem.appendChild(checkbox);
         songItem.appendChild(songInfo);
         songItem.appendChild(addBtn);
         availableSongs.appendChild(songItem);
@@ -1163,25 +1138,6 @@ function showUndo(undoCallback) {
             undoDiv.style.display = 'none';
         }
     }, 5000);
-}
-
-// Multi-select functionality
-function addSelectedSongs() {
-    selectedSongs.forEach(songId => {
-        if (!builderSongs.includes(songId)) {
-            builderSongs.push(songId);
-        }
-    });
-    selectedSongs.clear();
-    updateBuilderDuration();
-    renderAvailableSongs();
-    renderPreviewList();
-}
-
-function updateSelectedCount() {
-    const count = selectedSongs.size;
-    selectedCountSpan.textContent = `${count} song${count !== 1 ? 's' : ''} selected`;
-    multiSelectBar.classList.toggle('visible', count > 0);
 }
 
 // Initialize app when DOM and Supabase are ready
