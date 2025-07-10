@@ -1075,8 +1075,6 @@ async function deleteSetlist(setlistId) {
 }
 
 async function deleteSong(songId) {
-    if (!confirm('Are you sure you want to delete this song?')) return;
-    
     try {
         const { error } = await supabase
             .from('songs')
