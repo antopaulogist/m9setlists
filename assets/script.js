@@ -17,6 +17,24 @@ const globalSuccess = document.getElementById('global-success');
 const successMessage = document.getElementById('success-message');
 const loadingOverlay = document.getElementById('loading-overlay');
 
+// View-specific Elements
+const setlistsView = document.getElementById('setlists-view');
+const setlistsLoading = document.getElementById('setlists-loading');
+const setlistsGrid = document.getElementById('setlists-grid');
+const songsView = document.getElementById('songs-view');
+const songsLoading = document.getElementById('songs-loading');
+const songsList = document.getElementById('songs-list');
+const builderView = document.getElementById('setlist-builder-view');
+const previewList = document.getElementById('preview-list');
+const availableSongs = document.getElementById('available-songs');
+const builderTitle = document.getElementById('builder-title');
+const setlistTitle = document.getElementById('setlist-title');
+const setlistDuration = document.getElementById('setlist-duration');
+const setlistSongs = document.getElementById('setlist-songs');
+const emptySetlistState = document.getElementById('empty-setlist-state');
+const noSetlistsState = document.getElementById('no-setlists-state');
+const noSongsState = document.getElementById('no-songs-state');
+
 // State
 let currentView = 'setlists';
 let currentSetlistId = null;
@@ -83,10 +101,10 @@ function showLoading(show) {
 }
 
 function showViewLoading(viewType, show) {
-    if (viewType === 'setlists') {
+    if (viewType === 'setlists' && setlistsLoading && setlistsGrid) {
         setlistsLoading.classList.toggle('hidden', !show);
         setlistsGrid.classList.toggle('hidden', show);
-    } else if (viewType === 'songs') {
+    } else if (viewType === 'songs' && songsLoading && songsList) {
         songsLoading.classList.toggle('hidden', !show);
         songsList.classList.toggle('hidden', show);
     }
@@ -873,6 +891,8 @@ function renderAvailableSongs() {
 
 // Render preview list
 function renderPreviewList() {
+    if (!previewList) return; // Guard against null previewList
+    
     previewList.innerHTML = '';
     
     if (builderSongs.length === 0) {
