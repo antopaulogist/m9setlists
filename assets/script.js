@@ -98,6 +98,54 @@ function showConfirmation(message, onConfirm) {
     }
 }
 
+// Drag and Drop Handlers
+function handleDragStart(e) {
+    const item = e.target.closest('.builder-preview-item');
+    if (!item) return;
+    
+    dragSource = item;
+    item.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', item.dataset.index);
+}
+
+function handleDragEnd(e) {
+    const item = e.target.closest('.builder-preview-item');
+    if (!item) return;
+    
+    item.classList.remove('dragging');
+    document.querySelectorAll('.builder-preview-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+    dragSource = null;
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    const item = e.target.closest('.builder-preview-item');
+    if (!item || item === dragSource) return;
+    
+    e.dataTransfer.dropEffect = 'move';
+    item.classList.add('drag-over');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    const dropTarget = e.target.closest('.builder-preview-item');
+    if (!dropTarget || !dragSource || dropTarget === dragSource) return;
+    
+    const fromIndex = parseInt(dragSource.dataset.index);
+    const toIndex = parseInt(dropTarget.dataset.index);
+    
+    // Reorder builderSongs array
+    const [movedSong] = builderSongs.splice(fromIndex, 1);
+    builderSongs.splice(toIndex, 0, movedSong);
+    
+    // Update UI
+    renderPreviewList();
+    updateBuilderDuration();
+}
+
 // Event listeners
 function bindEvents() {
     // Navigation
