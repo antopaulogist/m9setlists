@@ -22,6 +22,7 @@ const newSetlistInput = document.getElementById('new-setlist-input');
 const newSongInput = document.getElementById('new-song-input');
 const songMinutes = document.getElementById('song-minutes');
 const songSeconds = document.getElementById('song-seconds');
+const songSearch = document.getElementById('song-search');
 
 // View-specific Elements
 const setlistsView = document.getElementById('setlists-view');
@@ -201,7 +202,6 @@ function bindEvents() {
     // Builder
     const builderBackBtn = document.getElementById('builder-back-btn');
     const saveSetlistBtn = document.getElementById('save-setlist-btn');
-    const songSearch = document.getElementById('song-search');
     const previewList = document.getElementById('preview-list');
     
     if (builderBackBtn) {
