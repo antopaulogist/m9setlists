@@ -110,10 +110,9 @@ function handleDragStart(e) {
 }
 
 function handleDragEnd(e) {
-    const item = e.target.closest('.builder-preview-item');
-    if (!item) return;
+    if (!dragSource) return;
     
-    item.classList.remove('dragging');
+    dragSource.classList.remove('dragging');
     document.querySelectorAll('.builder-preview-item').forEach(item => {
         item.classList.remove('drag-over');
     });
@@ -199,11 +198,8 @@ function bindEvents() {
     }
     
     if (previewList) {
-        // Drag and drop events for preview list
-        previewList.addEventListener('dragstart', handleDragStart);
-        previewList.addEventListener('dragend', handleDragEnd);
-        previewList.addEventListener('dragover', handleDragOver);
-        previewList.addEventListener('drop', handleDrop);
+        // Make the preview list items draggable when rendered
+        renderPreviewList();
     }
 }
 
@@ -880,7 +876,7 @@ function renderPreviewList() {
     previewList.innerHTML = '';
     
     if (builderSongs.length === 0) {
-        previewList.innerHTML = '<li class="empty-state">No songs added yet</li>';
+        previewList.innerHTML = '<div class="empty-state">No songs added to setlist</div>';
         return;
     }
 
@@ -892,6 +888,12 @@ function renderPreviewList() {
         li.className = 'builder-preview-item';
         li.draggable = true;
         li.dataset.index = index;
+        
+        // Add drag and drop event listeners directly to the item
+        li.addEventListener('dragstart', handleDragStart);
+        li.addEventListener('dragend', handleDragEnd);
+        li.addEventListener('dragover', handleDragOver);
+        li.addEventListener('drop', handleDrop);
         
         const songInfo = document.createElement('div');
         songInfo.className = 'builder-preview-info';
