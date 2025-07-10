@@ -16,6 +16,9 @@ const errorMessage = document.getElementById('error-message');
 const globalSuccess = document.getElementById('global-success');
 const successMessage = document.getElementById('success-message');
 const loadingOverlay = document.getElementById('loading-overlay');
+const multiSelectBar = document.getElementById('multi-select-bar');
+const selectedCountSpan = multiSelectBar.querySelector('.selected-count');
+const addSelectedBtn = document.getElementById('add-selected-btn');
 
 // Setlists View Elements
 const setlistsView = document.getElementById('setlists-view');
@@ -66,6 +69,10 @@ let realtimeChannel = null;
 
 // Search debounce
 let searchTimeout = null;
+
+// State
+let selectedSongs = new Set();
+let dragSource = null;
 
 // Initialize app
 async function init() {
@@ -152,15 +159,20 @@ function bindEvents() {
     // Songs
     newSongForm.addEventListener('submit', addSong);
 
+    // Multi-select
+    addSelectedBtn.addEventListener('click', addSelectedSongs);
+    
     // Builder - Debounced search
-    builderBackBtn.addEventListener('click', () => showView('setlists'));
-    saveSetlistBtn.addEventListener('click', saveBuilderSetlist);
-    songSearch.addEventListener('input', (e) => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            filterAvailableSongs(e.target.value);
-        }, 300); // 300ms debounce
+    builderBackBtn.addEventListener('click', () => {
+        selectedSongs.clear();
+        showView('setlists');
     });
+    
+    // Drag and drop events for preview list
+    previewList.addEventListener('dragstart', handleDragStart);
+    previewList.addEventListener('dragend', handleDragEnd);
+    previewList.addEventListener('dragover', handleDragOver);
+    previewList.addEventListener('drop', handleDrop);
     
     // Keyboard shortcuts
     document.addEventListener('keydown', handleKeyboardShortcuts);
@@ -665,49 +677,83 @@ function renderSetlistView() {
         if (!song) return; // Song might have been deleted
         
         const li = document.createElement('li');
+        li.className = 'setlist-song-item';
+        li.draggable = true;
         li.dataset.index = index;
         
-        // Left side - Up button
-        const leftButtons = document.createElement('div');
-        leftButtons.className = 'move-buttons';
+        const songInfo = document.createElement('div');
+        songInfo.className = 'song-info';
+        songInfo.innerHTML = `${song.title} <span class="song-duration-display">${formatSongDuration(song.duration_minutes, song.duration_seconds)}</span>`;
         
-        const upBtn = document.createElement('button');
-        upBtn.className = 'move-btn';
-        upBtn.innerHTML = '↑';
-        upBtn.title = 'Move up';
-        upBtn.disabled = index === 0;
-        upBtn.addEventListener('click', () => moveSong(index, index - 1));
-        leftButtons.appendChild(upBtn);
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'remove-btn';
+        removeBtn.innerHTML = '×';
+        removeBtn.title = 'Remove from setlist';
+        removeBtn.addEventListener('click', () => removeSongFromSetlist(index));
         
-        li.appendChild(leftButtons);
-        
-        // Center - Song info
-        const span = document.createElement('span');
-        span.innerHTML = `${song.title} <span class="song-duration-display">${formatSongDuration(song.duration_minutes, song.duration_seconds)}</span>`;
-        li.appendChild(span);
-        
-        // Right side - Down button  
-        const rightButtons = document.createElement('div');
-        rightButtons.className = 'move-buttons';
-        
-        const downBtn = document.createElement('button');
-        downBtn.className = 'move-btn';
-        downBtn.innerHTML = '↓';
-        downBtn.title = 'Move down';
-        downBtn.disabled = index === setlist.song_ids.length - 1;
-        downBtn.addEventListener('click', () => moveSong(index, index + 1));
-        rightButtons.appendChild(downBtn);
-        
-        li.appendChild(rightButtons);
-        
-        // Right-click context menu
-        li.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            showContextMenu(e, songId, index);
-        });
-        
+        li.appendChild(songInfo);
+        li.appendChild(removeBtn);
         setlistSongs.appendChild(li);
     });
+
+    // Add drag and drop handlers
+    setlistSongs.addEventListener('dragstart', handleSetlistDragStart);
+    setlistSongs.addEventListener('dragend', handleSetlistDragEnd);
+    setlistSongs.addEventListener('dragover', handleSetlistDragOver);
+    setlistSongs.addEventListener('drop', handleSetlistDrop);
+}
+
+// Setlist drag and drop handlers
+function handleSetlistDragStart(e) {
+    const item = e.target.closest('.setlist-song-item');
+    if (!item) return;
+    
+    dragSource = item;
+    item.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', item.dataset.index);
+}
+
+function handleSetlistDragEnd(e) {
+    const item = e.target.closest('.setlist-song-item');
+    if (!item) return;
+    
+    item.classList.remove('dragging');
+    document.querySelectorAll('.setlist-song-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+    dragSource = null;
+}
+
+function handleSetlistDragOver(e) {
+    e.preventDefault();
+    const item = e.target.closest('.setlist-song-item');
+    if (!item || item === dragSource) return;
+    
+    e.dataTransfer.dropEffect = 'move';
+    item.classList.add('drag-over');
+}
+
+async function handleSetlistDrop(e) {
+    e.preventDefault();
+    const dropTarget = e.target.closest('.setlist-song-item');
+    if (!dropTarget || !dragSource || dropTarget === dragSource) return;
+    
+    const fromIndex = parseInt(dragSource.dataset.index);
+    const toIndex = parseInt(dropTarget.dataset.index);
+    
+    // Move song in the array
+    const setlist = setlists[currentSetlistId];
+    const songIds = [...setlist.song_ids];
+    const [movedSong] = songIds.splice(fromIndex, 1);
+    songIds.splice(toIndex, 0, movedSong);
+    
+    // Update local state
+    setlists[currentSetlistId].song_ids = songIds;
+    
+    // Update database
+    await updateSetlist(currentSetlistId);
+    renderSetlistView();
 }
 
 // Render builder view
@@ -732,26 +778,16 @@ function renderBuilderView() {
 
 // Render available songs
 function renderAvailableSongs() {
-    const searchTerm = songSearch.value.toLowerCase();
-    const songIds = Object.keys(songs);
-    
-    if (songIds.length === 0) {
-        availableSongs.innerHTML = '<p class="empty-state">No songs in library. Add some in the Song Library tab!</p>';
-        return;
-    }
-
     availableSongs.innerHTML = '';
-
-    // Filter and sort songs
-    const filteredSongs = songIds
-        .filter(songId => {
-            const song = songs[songId];
-            return song.title.toLowerCase().includes(searchTerm);
-        })
-        .sort((a, b) => songs[a].title.localeCompare(songs[b].title));
-
+    const searchTerm = songSearch.value.toLowerCase();
+    
+    const filteredSongs = Object.keys(songs).filter(songId => {
+        const song = songs[songId];
+        return song.title.toLowerCase().includes(searchTerm);
+    });
+    
     if (filteredSongs.length === 0) {
-        availableSongs.innerHTML = '<p class="empty-state">No songs match your search.</p>';
+        availableSongs.innerHTML = '<div class="empty-state">No songs found</div>';
         return;
     }
 
@@ -760,10 +796,25 @@ function renderAvailableSongs() {
         const songItem = document.createElement('div');
         songItem.className = 'builder-song-item';
         
+        // Add checkbox for multi-select
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'builder-song-checkbox';
+        checkbox.checked = selectedSongs.has(songId);
+        checkbox.addEventListener('change', () => {
+            if (checkbox.checked) {
+                selectedSongs.add(songId);
+            } else {
+                selectedSongs.delete(songId);
+            }
+            updateSelectedCount();
+        });
+        
         // Check if song is already in setlist
         const isInSetlist = builderSongs.includes(songId);
         if (isInSetlist) {
             songItem.classList.add('in-setlist');
+            checkbox.disabled = true;
         }
         
         const songInfo = document.createElement('div');
@@ -787,6 +838,7 @@ function renderAvailableSongs() {
         addBtn.disabled = isInSetlist;
         addBtn.addEventListener('click', () => addSongToBuilder(songId));
         
+        songItem.appendChild(checkbox);
         songItem.appendChild(songInfo);
         songItem.appendChild(addBtn);
         availableSongs.appendChild(songItem);
@@ -808,6 +860,8 @@ function renderPreviewList() {
         
         const li = document.createElement('li');
         li.className = 'builder-preview-item';
+        li.draggable = true;
+        li.dataset.index = index;
         
         const songInfo = document.createElement('div');
         songInfo.className = 'builder-preview-info';
@@ -906,65 +960,6 @@ function calculateSetlistDuration(songIds) {
         }
         return total;
     }, 0);
-}
-
-// Move song up or down
-async function moveSong(fromIndex, toIndex) {
-    if (!currentSetlistId || toIndex < 0 || toIndex >= setlists[currentSetlistId].song_ids.length) return;
-    
-    const setlist = setlists[currentSetlistId];
-    const songIds = [...setlist.song_ids];
-    const songId = songIds[fromIndex];
-    
-    // Remove from old position
-    songIds.splice(fromIndex, 1);
-    
-    // Insert at new position
-    songIds.splice(toIndex, 0, songId);
-    
-    // Update local state
-    setlists[currentSetlistId].song_ids = songIds;
-    
-    // Update database
-    await updateSetlist(currentSetlistId);
-    renderSetlistView();
-}
-
-// Context menu for removing songs from setlist
-function showContextMenu(event, songId, index) {
-    const existingMenu = document.querySelector('.context-menu');
-    if (existingMenu) {
-        existingMenu.remove();
-    }
-    
-    const contextMenu = document.createElement('div');
-    contextMenu.className = 'context-menu';
-    
-    const removeItem = document.createElement('div');
-    removeItem.className = 'context-menu-item delete';
-    removeItem.textContent = 'Remove from setlist';
-    removeItem.addEventListener('click', () => {
-        removeSongFromSetlist(index);
-        contextMenu.remove();
-    });
-    
-    contextMenu.appendChild(removeItem);
-    
-    contextMenu.style.left = event.pageX + 'px';
-    contextMenu.style.top = event.pageY + 'px';
-    
-    document.body.appendChild(contextMenu);
-    
-    const removeMenu = (e) => {
-        if (!contextMenu.contains(e.target)) {
-            contextMenu.remove();
-            document.removeEventListener('click', removeMenu);
-        }
-    };
-    
-    setTimeout(() => {
-        document.addEventListener('click', removeMenu);
-    }, 10);
 }
 
 // Remove song from setlist
@@ -1096,6 +1091,25 @@ function showUndo(undoCallback) {
     } catch (error) {
         console.error('Error showing undo notification:', error);
     }
+}
+
+// Multi-select functionality
+function addSelectedSongs() {
+    selectedSongs.forEach(songId => {
+        if (!builderSongs.includes(songId)) {
+            builderSongs.push(songId);
+        }
+    });
+    selectedSongs.clear();
+    updateBuilderDuration();
+    renderAvailableSongs();
+    renderPreviewList();
+}
+
+function updateSelectedCount() {
+    const count = selectedSongs.size;
+    selectedCountSpan.textContent = `${count} song${count !== 1 ? 's' : ''} selected`;
+    multiSelectBar.classList.toggle('visible', count > 0);
 }
 
 // Initialize app when DOM and Supabase are ready

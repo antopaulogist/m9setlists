@@ -178,6 +178,10 @@
             <div id="builder-container">
                 <section id="song-selector" class="card" aria-labelledby="available-songs-title">
                     <h2 id="available-songs-title">Available Songs</h2>
+                    <div class="builder-multi-select-bar" id="multi-select-bar">
+                        <span class="selected-count">0 songs selected</span>
+                        <button id="add-selected-btn" class="btn btn-primary">Add Selected</button>
+                    </div>
                     <div class="search-container">
                         <label for="song-search" class="visually-hidden">Search songs</label>
                         <input 
@@ -199,7 +203,7 @@
                     <div id="total-duration" class="duration-display" aria-live="polite">
                         Total: 0:00
                     </div>
-                    <ul id="preview-list" role="list" aria-label="Songs in setlist"></ul>
+                    <ul id="preview-list" role="list" aria-label="Songs in setlist" class="sortable-list"></ul>
                 </section>
             </div>
         </main>
