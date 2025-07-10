@@ -832,17 +832,27 @@ function renderBuilderView() {
 // Render available songs
 function renderAvailableSongs() {
     availableSongs.innerHTML = '';
-    const searchTerm = songSearch.value.toLowerCase();
+    const searchTerm = songSearch?.value?.toLowerCase() || '';
     
+    // If no songs in library, show empty state
+    if (Object.keys(songs).length === 0) {
+        availableSongs.innerHTML = '<div class="empty-state">No songs in library</div>';
+        return;
+    }
+
+    // Filter songs only if there's a search term
     const filteredSongs = Object.keys(songs).filter(songId => {
         const song = songs[songId];
-        return song.title.toLowerCase().includes(searchTerm);
+        return searchTerm === '' || song.title.toLowerCase().includes(searchTerm);
     });
     
     if (filteredSongs.length === 0) {
         availableSongs.innerHTML = '<div class="empty-state">No songs found</div>';
         return;
     }
+
+    // Sort songs alphabetically
+    filteredSongs.sort((a, b) => songs[a].title.localeCompare(songs[b].title));
 
     filteredSongs.forEach(songId => {
         const song = songs[songId];
