@@ -17,6 +17,12 @@ const globalSuccess = document.getElementById('global-success');
 const successMessage = document.getElementById('success-message');
 const loadingOverlay = document.getElementById('loading-overlay');
 
+// Form Elements
+const newSetlistInput = document.getElementById('new-setlist-input');
+const newSongInput = document.getElementById('new-song-input');
+const songMinutes = document.getElementById('song-minutes');
+const songSeconds = document.getElementById('song-seconds');
+
 // View-specific Elements
 const setlistsView = document.getElementById('setlists-view');
 const setlistsLoading = document.getElementById('setlists-loading');
@@ -25,6 +31,7 @@ const songsView = document.getElementById('songs-view');
 const songsLoading = document.getElementById('songs-loading');
 const songsList = document.getElementById('songs-list');
 const builderView = document.getElementById('setlist-builder-view');
+const setlistView = document.getElementById('setlist-view');
 const previewList = document.getElementById('preview-list');
 const availableSongs = document.getElementById('available-songs');
 const builderTitle = document.getElementById('builder-title');
@@ -34,6 +41,8 @@ const setlistSongs = document.getElementById('setlist-songs');
 const emptySetlistState = document.getElementById('empty-setlist-state');
 const noSetlistsState = document.getElementById('no-setlists-state');
 const noSongsState = document.getElementById('no-songs-state');
+const totalDurationEl = document.getElementById('total-duration');
+const undoDiv = document.getElementById('undo-div');
 
 // State
 let currentView = 'setlists';
@@ -268,7 +277,7 @@ function showView(viewName) {
             renderSetlistView();
             break;
         case 'builder':
-            setlistBuilderView.classList.remove('hidden');
+            builderView.classList.remove('hidden');
             renderBuilderView();
             break;
     }
@@ -1122,27 +1131,28 @@ function handleTitleKeydown(e) {
 
 // Undo functionality
 function showUndo(undoCallback) {
-    try {
+    if (!undoDiv) return;
+    
+    // Clear any existing undo timeout
+    if (undoTimeout) {
         clearTimeout(undoTimeout);
-        
-        let undoDiv = document.getElementById('undo-div');
-        if (!undoDiv) {
-            undoDiv = document.createElement('div');
-            undoDiv.id = 'undo-div';
-            undoDiv.className = 'undo-notification';
-            document.body.appendChild(undoDiv);
-        }
-        
-        undoDiv.innerHTML = '<button id="undo-btn" class="undo-btn">Undo</button>';
-        document.getElementById('undo-btn').onclick = undoCallback;
-        undoDiv.style.display = 'flex';
-        
-        undoTimeout = setTimeout(() => {
-            undoDiv.style.display = 'none';
-        }, 5000);
-    } catch (error) {
-        console.error('Error showing undo notification:', error);
     }
+    
+    // Create and show the undo button
+    undoDiv.innerHTML = '<button id="undo-btn" class="undo-btn">Undo</button>';
+    const undoBtn = document.getElementById('undo-btn');
+    if (undoBtn) {
+        undoBtn.onclick = undoCallback;
+    }
+    
+    undoDiv.style.display = 'flex';
+    
+    // Auto-hide after 5 seconds
+    undoTimeout = setTimeout(() => {
+        if (undoDiv) {
+            undoDiv.style.display = 'none';
+        }
+    }, 5000);
 }
 
 // Multi-select functionality
