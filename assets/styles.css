@@ -101,6 +101,8 @@
 *::before,
 *::after {
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
 }
 
 body {
@@ -1343,11 +1345,29 @@ h3 {
 
 
 .setlist-song-item.dragging {
-    opacity: 0.8;
-    background: var(--gray-50);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    transform: rotate(2deg);
+    opacity: 0.9;
+    background: var(--primary-50);
+    border: 2px solid var(--primary-500);
+    box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+    transform: rotate(1deg);
     z-index: 1000;
+}
+
+.setlist-song-item.drag-completed {
+    background: var(--primary-50);
+    border: 2px solid var(--primary-500);
+    animation: dragCompleteFade 2s ease-out forwards;
+}
+
+@keyframes dragCompleteFade {
+    0% {
+        background: var(--primary-50);
+        border-color: var(--primary-500);
+    }
+    100% {
+        background: white;
+        border-color: var(--gray-200);
+    }
 }
 
 .setlist-song-item.drag-ready {

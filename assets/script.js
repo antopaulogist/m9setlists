@@ -883,6 +883,7 @@ async function handleSetlistDrop(e) {
 let touchStartY = 0;
 let touchStartX = 0;
 let touchCurrentY = 0;
+let touchOffsetY = 0;
 let touchItem = null;
 let touchStartIndex = 0;
 let isDragging = false;
@@ -906,12 +907,16 @@ function handleTouchStart(e) {
     isDragging = false;
     dragStarted = false;
     
+    // Store the initial offset between touch and item center
+    const itemRect = item.getBoundingClientRect();
+    touchOffsetY = touchStartY - (itemRect.top + itemRect.height / 2);
+    
     // Clear any existing timer
     if (longPressTimer) {
         clearTimeout(longPressTimer);
     }
     
-    // Start long press timer for drag initiation
+    // Start long press timer for drag initiation (increased delay)
     longPressTimer = setTimeout(() => {
         if (touchItem && !dragStarted) {
             touchItem.classList.add('drag-ready');
@@ -919,9 +924,9 @@ function handleTouchStart(e) {
                 if (touchItem && !dragStarted) {
                     startDrag();
                 }
-            }, 100);
+            }, 150);
         }
-    }, 150); // 150ms delay to show ready state
+    }, 400); // Increased from 150ms to 400ms for less competition with scroll
     
     // Don't prevent default yet - let browser handle normal touch
 }
@@ -962,7 +967,7 @@ function handleTouchMove(e) {
     const deltaX = touchCurrentX - touchStartX;
     
     // Check if this is a scroll gesture (more horizontal than vertical movement)
-    const isScrollGesture = Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10;
+    const isScrollGesture = Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 15;
     
     // If it's a scroll gesture, cancel drag
     if (isScrollGesture && !dragStarted) {
@@ -971,7 +976,7 @@ function handleTouchMove(e) {
     }
     
     // If we've moved significantly and haven't started dragging, start it
-    if (!dragStarted && Math.abs(deltaY) > 10) {
+    if (!dragStarted && Math.abs(deltaY) > 15) {
         if (longPressTimer) {
             clearTimeout(longPressTimer);
         }
@@ -981,8 +986,9 @@ function handleTouchMove(e) {
     // Only handle drag movement if we're actually dragging
     if (!isDragging) return;
     
-    // Move the item visually
-    touchItem.style.transform = `translateY(${deltaY}px)`;
+    // Move the item visually with offset compensation
+    const adjustedDeltaY = deltaY - touchOffsetY;
+    touchItem.style.transform = `translateY(${adjustedDeltaY}px)`;
     touchItem.style.zIndex = '1000';
     
     // Get all setlist items
@@ -1057,6 +1063,8 @@ async function handleTouchEnd(e) {
         longPressTimer = null;
     }
     
+    let wasDropSuccessful = false;
+    
     // If we were dragging, handle the drop
     if (isDragging && placeholder && placeholder.parentNode) {
         // Get the new position from placeholder
@@ -1072,6 +1080,8 @@ async function handleTouchEnd(e) {
         
         // Update if position changed
         if (newIndex !== touchStartIndex) {
+            wasDropSuccessful = true;
+            
             // Update the song order in data
             const songIds = [...setlists[currentSetlistId].song_ids];
             const [movedSong] = songIds.splice(touchStartIndex, 1);
@@ -1093,6 +1103,20 @@ async function handleTouchEnd(e) {
         touchItem.classList.remove('dragging', 'drag-ready');
         touchItem.style.transform = '';
         touchItem.style.zIndex = '';
+        
+        // Add completion highlight if drop was successful
+        if (wasDropSuccessful) {
+            // Find the item in the new position after re-render
+            setTimeout(() => {
+                const newItem = document.querySelector(`[data-index="${newIndex || touchStartIndex}"]`);
+                if (newItem) {
+                    newItem.classList.add('drag-completed');
+                    setTimeout(() => {
+                        newItem.classList.remove('drag-completed');
+                    }, 2000);
+                }
+            }, 100);
+        }
     }
     
     if (placeholder && placeholder.parentNode) {
