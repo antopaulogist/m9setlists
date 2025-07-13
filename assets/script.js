@@ -703,9 +703,9 @@ function renderSetlistView() {
     const setlist = setlists[currentSetlistId];
     setlistTitle.textContent = setlist.name;
     
-    // Calculate and display total duration
-    const totalDuration = calculateSetlistDuration(setlist.song_ids);
-    setlistDuration.textContent = formatDuration(totalDuration);
+    // Calculate and display total duration (exact calculation)
+    const totalDuration = calculateSetlistDurationExact(setlist.song_ids);
+    setlistDuration.textContent = formatDurationExact(totalDuration);
     
     setlistSongs.innerHTML = '';
     
@@ -725,18 +725,18 @@ function renderSetlistView() {
         li.draggable = true;
         li.dataset.index = index;
         
+        // Add drag handle
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'drag-handle';
+        dragHandle.innerHTML = '⋮⋮';
+        dragHandle.title = 'Drag to reorder';
+        
         const songInfo = document.createElement('div');
         songInfo.className = 'song-info';
-        songInfo.innerHTML = `${song.title} <span class="song-duration-display">${formatSongDuration(song.duration_minutes, song.duration_seconds)}</span>`;
+        songInfo.innerHTML = `${song.title}`;  // Removed individual song duration
         
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'remove-btn';
-        removeBtn.innerHTML = '×';
-        removeBtn.title = 'Remove from setlist';
-        removeBtn.addEventListener('click', () => removeSongFromSetlist(index));
-        
+        li.appendChild(dragHandle);
         li.appendChild(songInfo);
-        li.appendChild(removeBtn);
         setlistSongs.appendChild(li);
     });
 
@@ -750,7 +750,13 @@ function renderSetlistView() {
 // Setlist drag and drop handlers
 function handleSetlistDragStart(e) {
     const item = e.target.closest('.setlist-song-item');
-    if (!item) return;
+    const dragHandle = e.target.closest('.drag-handle');
+    
+    // Only allow dragging if the drag handle was clicked
+    if (!item || !dragHandle) {
+        e.preventDefault();
+        return;
+    }
     
     dragSource = item;
     item.classList.add('dragging');
@@ -1008,24 +1014,28 @@ function calculateSetlistDuration(songIds) {
     }, 0);
 }
 
-// Remove song from setlist
-async function removeSongFromSetlist(index) {
-    if (!currentSetlistId) return;
-    
-    const setlist = setlists[currentSetlistId];
-    const removedSongId = setlist.song_ids[index];
-    
-    setlist.song_ids.splice(index, 1);
-    await updateSetlist(currentSetlistId);
-    renderSetlistView();
-    
-    // Show undo notification
-    showUndo(() => {
-        setlist.song_ids.splice(index, 0, removedSongId);
-        updateSetlist(currentSetlistId);
-        renderSetlistView();
-    });
+function calculateSetlistDurationExact(songIds) {
+    return songIds.reduce((total, songId) => {
+        const song = songs[songId];
+        if (song) {
+            return total + song.duration_minutes + (song.duration_seconds / 60);
+        }
+        return total;
+    }, 0);
 }
+
+function formatDurationExact(totalMinutes) {
+    const hours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = Math.floor(totalMinutes % 60);
+    const seconds = Math.round((totalMinutes % 1) * 60);
+    
+    if (hours > 0) {
+        return `${hours}:${remainingMinutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${remainingMinutes}:${seconds.toString().padStart(2, '0')}`;
+}
+
+// Remove song from setlist function removed - no delete functionality needed
 
 // Database operations
 async function updateSetlist(setlistId) {
