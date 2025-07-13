@@ -1210,7 +1210,7 @@ h3 {
     align-items: center;
     justify-content: space-between;
     max-width: 400px;
-    margin: var(--space-5) auto var(--space-6);
+    margin: var(--space-5) auto var(--space-8);
     padding: 0 var(--space-5);
 }
 
@@ -1639,7 +1639,7 @@ h3 {
     
     /* Headers */
     #setlist-header {
-        margin: var(--space-4) auto 0;
+        margin: var(--space-4) auto var(--space-6);
         padding: 0 var(--space-4);
     }
     
