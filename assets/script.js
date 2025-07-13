@@ -881,9 +881,14 @@ async function handleSetlistDrop(e) {
 
 // Touch event handlers for mobile support
 let touchStartY = 0;
+let touchStartX = 0;
 let touchCurrentY = 0;
 let touchItem = null;
 let touchStartIndex = 0;
+let isDragging = false;
+let dragStarted = false;
+let touchStartTime = 0;
+let longPressTimer = null;
 
 function handleTouchStart(e) {
     const item = e.target.closest('.setlist-song-item');
@@ -895,14 +900,46 @@ function handleTouchStart(e) {
     touchItem = item;
     touchStartIndex = parseInt(item.dataset.index);
     touchStartY = e.touches[0].clientY;
+    touchStartX = e.touches[0].clientX;
     touchCurrentY = touchStartY;
+    touchStartTime = Date.now();
+    isDragging = false;
+    dragStarted = false;
     
-    item.classList.add('dragging');
+    // Clear any existing timer
+    if (longPressTimer) {
+        clearTimeout(longPressTimer);
+    }
+    
+    // Start long press timer for drag initiation
+    longPressTimer = setTimeout(() => {
+        if (touchItem && !dragStarted) {
+            touchItem.classList.add('drag-ready');
+            setTimeout(() => {
+                if (touchItem && !dragStarted) {
+                    startDrag();
+                }
+            }, 100);
+        }
+    }, 150); // 150ms delay to show ready state
+    
+    // Don't prevent default yet - let browser handle normal touch
+}
+
+function startDrag() {
+    if (!touchItem || dragStarted) return;
+    
+    dragStarted = true;
+    isDragging = true;
+    
+    // Add dragging class and prevent touch highlighting
+    touchItem.classList.remove('drag-ready');
+    touchItem.classList.add('dragging');
     
     // Create placeholder for touch
     placeholder = document.createElement('li');
     placeholder.className = 'setlist-song-item placeholder';
-    placeholder.style.height = item.offsetHeight + 'px';
+    placeholder.style.height = touchItem.offsetHeight + 'px';
     placeholder.style.background = 'transparent';
     placeholder.style.border = '2px dashed #ccc';
     placeholder.style.opacity = '0.5';
@@ -910,14 +947,39 @@ function handleTouchStart(e) {
     // Prevent scrolling while dragging
     document.body.style.overflow = 'hidden';
     
-    e.preventDefault();
+    // Add haptic feedback if available
+    if (navigator.vibrate) {
+        navigator.vibrate(50);
+    }
 }
 
 function handleTouchMove(e) {
     if (!touchItem) return;
     
     touchCurrentY = e.touches[0].clientY;
+    const touchCurrentX = e.touches[0].clientX;
     const deltaY = touchCurrentY - touchStartY;
+    const deltaX = touchCurrentX - touchStartX;
+    
+    // Check if this is a scroll gesture (more horizontal than vertical movement)
+    const isScrollGesture = Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10;
+    
+    // If it's a scroll gesture, cancel drag
+    if (isScrollGesture && !dragStarted) {
+        cancelDrag();
+        return;
+    }
+    
+    // If we've moved significantly and haven't started dragging, start it
+    if (!dragStarted && Math.abs(deltaY) > 10) {
+        if (longPressTimer) {
+            clearTimeout(longPressTimer);
+        }
+        startDrag();
+    }
+    
+    // Only handle drag movement if we're actually dragging
+    if (!isDragging) return;
     
     // Move the item visually
     touchItem.style.transform = `translateY(${deltaY}px)`;
@@ -962,19 +1024,41 @@ function handleTouchMove(e) {
     e.preventDefault();
 }
 
+function cancelDrag() {
+    if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+    }
+    
+    if (touchItem) {
+        touchItem.classList.remove('dragging', 'drag-ready');
+        touchItem.style.transform = '';
+        touchItem.style.zIndex = '';
+    }
+    
+    if (placeholder && placeholder.parentNode) {
+        placeholder.parentNode.removeChild(placeholder);
+    }
+    
+    document.body.style.overflow = '';
+    
+    touchItem = null;
+    isDragging = false;
+    dragStarted = false;
+    placeholder = null;
+}
+
 async function handleTouchEnd(e) {
     if (!touchItem) return;
     
-    // Re-enable scrolling
-    document.body.style.overflow = '';
+    // Clear any pending long press timer
+    if (longPressTimer) {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+    }
     
-    // Reset visual state
-    touchItem.style.transform = '';
-    touchItem.style.zIndex = '';
-    touchItem.classList.remove('dragging');
-    
-    // Handle drop if placeholder exists
-    if (placeholder && placeholder.parentNode) {
+    // If we were dragging, handle the drop
+    if (isDragging && placeholder && placeholder.parentNode) {
         // Get the new position from placeholder
         const container = setlistSongs;
         const items = Array.from(container.children);
@@ -1002,18 +1086,34 @@ async function handleTouchEnd(e) {
             // Re-render the list with new order
             renderSetlistView();
         }
-        
-        // Remove placeholder
+    }
+    
+    // Clean up drag state
+    if (touchItem) {
+        touchItem.classList.remove('dragging', 'drag-ready');
+        touchItem.style.transform = '';
+        touchItem.style.zIndex = '';
+    }
+    
+    if (placeholder && placeholder.parentNode) {
         placeholder.parentNode.removeChild(placeholder);
     }
     
+    // Re-enable scrolling
+    document.body.style.overflow = '';
+    
+    // Reset all touch variables
     touchItem = null;
     touchStartY = 0;
+    touchStartX = 0;
     touchCurrentY = 0;
     touchStartIndex = 0;
+    touchStartTime = 0;
+    isDragging = false;
+    dragStarted = false;
     placeholder = null;
     
-    e.preventDefault();
+    // Don't prevent default to allow normal touch behavior
 }
 
 // Render builder view
