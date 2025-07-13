@@ -506,15 +506,15 @@ function renderSetlists() {
         const actionsContainer = document.createElement('div');
         actionsContainer.className = 'setlist-actions';
         
-            // Build button
-    const buildBtn = document.createElement('button');
-    buildBtn.className = 'setlist-build-btn';
-    buildBtn.innerHTML = '✏️';
-    buildBtn.title = 'Edit this setlist';
-    buildBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        showBuilderView(setlistId);
-    });
+                         // Build button
+     const buildBtn = document.createElement('button');
+     buildBtn.className = 'setlist-build-btn';
+     buildBtn.innerHTML = '✎';
+     buildBtn.title = 'Edit this setlist';
+     buildBtn.addEventListener('click', (e) => {
+         e.stopPropagation();
+         showBuilderView(setlistId);
+     });
         
         // Delete button
         const deleteBtn = document.createElement('button');
