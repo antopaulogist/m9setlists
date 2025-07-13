@@ -941,7 +941,7 @@ h3 {
     margin-bottom: var(--space-2);
     user-select: none;
     transition: background 0.2s;
-    gap: var(--space-4);
+    gap: var(--space-2);
 }
 
 /* Checkbox styles for multi-select */
@@ -977,7 +977,7 @@ h3 {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 0 var(--space-4);
+    margin: 0 var(--space-2);
 }
 
 .builder-preview-title {
@@ -1681,12 +1681,30 @@ h3 {
     }
 
     .builder-preview-item {
-        padding: var(--space-3);
+        padding: var(--space-2);
         margin-bottom: var(--space-1);
+        position: relative;
+        justify-content: flex-start;
+        min-height: 60px;
+    }
+
+    .builder-preview-info {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60%;
+        margin: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
     .builder-preview-title {
         font-size: var(--text-sm);
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .builder-preview-duration {
@@ -1696,6 +1714,22 @@ h3 {
     .builder-remove-btn {
         padding: var(--space-1) var(--space-2);
         min-height: 32px;
+        position: absolute;
+        right: var(--space-2);
+    }
+
+    .builder-preview-item .arrow-btn.up-arrow {
+        position: absolute;
+        left: var(--space-1);
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .builder-preview-item .arrow-btn.down-arrow {
+        position: absolute;
+        left: calc(var(--space-1) + 40px);
+        top: 50%;
+        transform: translateY(-50%);
     }
 }
 
