@@ -829,6 +829,7 @@ async function handleSetlistDrop(e) {
 let touchStartY = 0;
 let touchCurrentY = 0;
 let touchItem = null;
+let touchStartIndex = 0;
 
 function handleTouchStart(e) {
     const item = e.target.closest('.setlist-song-item');
@@ -838,10 +839,15 @@ function handleTouchStart(e) {
     if (!item || !dragHandle) return;
     
     touchItem = item;
+    touchStartIndex = parseInt(item.dataset.index);
     touchStartY = e.touches[0].clientY;
     touchCurrentY = touchStartY;
     
     item.classList.add('dragging');
+    
+    // Prevent scrolling while dragging
+    document.body.style.overflow = 'hidden';
+    
     e.preventDefault();
 }
 
@@ -855,18 +861,36 @@ function handleTouchMove(e) {
     touchItem.style.transform = `translateY(${deltaY}px)`;
     touchItem.style.zIndex = '1000';
     
-    // Find the item we're hovering over
-    const elementBelow = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
-    const targetItem = elementBelow?.closest('.setlist-song-item');
+    // Get all setlist items
+    const allItems = Array.from(document.querySelectorAll('.setlist-song-item'));
+    const touchItemRect = touchItem.getBoundingClientRect();
+    const touchCenterY = touchItemRect.top + touchItemRect.height / 2;
     
     // Remove drag-over class from all items
-    document.querySelectorAll('.setlist-song-item').forEach(item => {
+    allItems.forEach(item => {
         item.classList.remove('drag-over');
     });
     
-    // Add drag-over class to target item
-    if (targetItem && targetItem !== touchItem) {
-        targetItem.classList.add('drag-over');
+    // Find the item we should drop on
+    let closestItem = null;
+    let closestDistance = Infinity;
+    
+    allItems.forEach(item => {
+        if (item === touchItem) return;
+        
+        const rect = item.getBoundingClientRect();
+        const itemCenterY = rect.top + rect.height / 2;
+        const distance = Math.abs(touchCenterY - itemCenterY);
+        
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            closestItem = item;
+        }
+    });
+    
+    // Add drag-over class to the closest item
+    if (closestItem && closestDistance < 50) { // 50px threshold
+        closestItem.classList.add('drag-over');
     }
     
     e.preventDefault();
@@ -875,9 +899,30 @@ function handleTouchMove(e) {
 async function handleTouchEnd(e) {
     if (!touchItem) return;
     
-    // Find the item we're dropping on
-    const elementBelow = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-    const dropTarget = elementBelow?.closest('.setlist-song-item');
+    // Re-enable scrolling
+    document.body.style.overflow = '';
+    
+    // Get all setlist items
+    const allItems = Array.from(document.querySelectorAll('.setlist-song-item'));
+    const touchItemRect = touchItem.getBoundingClientRect();
+    const touchCenterY = touchItemRect.top + touchItemRect.height / 2;
+    
+    // Find the item we should drop on
+    let dropTarget = null;
+    let closestDistance = Infinity;
+    
+    allItems.forEach(item => {
+        if (item === touchItem) return;
+        
+        const rect = item.getBoundingClientRect();
+        const itemCenterY = rect.top + rect.height / 2;
+        const distance = Math.abs(touchCenterY - itemCenterY);
+        
+        if (distance < closestDistance) {
+            closestDistance = distance;
+            dropTarget = item;
+        }
+    });
     
     // Reset visual state
     touchItem.style.transform = '';
@@ -885,32 +930,35 @@ async function handleTouchEnd(e) {
     touchItem.classList.remove('dragging');
     
     // Remove drag-over class from all items
-    document.querySelectorAll('.setlist-song-item').forEach(item => {
+    allItems.forEach(item => {
         item.classList.remove('drag-over');
     });
     
-    // Perform the drop if valid
-    if (dropTarget && dropTarget !== touchItem) {
-        const fromIndex = parseInt(touchItem.dataset.index);
+    // Perform the drop if we have a valid target and it's close enough
+    if (dropTarget && closestDistance < 50) { // 50px threshold
+        const fromIndex = touchStartIndex;
         const toIndex = parseInt(dropTarget.dataset.index);
         
-        // Move song in the array
-        const setlist = setlists[currentSetlistId];
-        const songIds = [...setlist.song_ids];
-        const [movedSong] = songIds.splice(fromIndex, 1);
-        songIds.splice(toIndex, 0, movedSong);
-        
-        // Update local state
-        setlists[currentSetlistId].song_ids = songIds;
-        
-        // Update database
-        await updateSetlist(currentSetlistId);
-        renderSetlistView();
+        if (fromIndex !== toIndex) {
+            // Move song in the array
+            const setlist = setlists[currentSetlistId];
+            const songIds = [...setlist.song_ids];
+            const [movedSong] = songIds.splice(fromIndex, 1);
+            songIds.splice(toIndex, 0, movedSong);
+            
+            // Update local state
+            setlists[currentSetlistId].song_ids = songIds;
+            
+            // Update database
+            await updateSetlist(currentSetlistId);
+            renderSetlistView();
+        }
     }
     
     touchItem = null;
     touchStartY = 0;
     touchCurrentY = 0;
+    touchStartIndex = 0;
     
     e.preventDefault();
 }

@@ -1402,6 +1402,20 @@ h3 {
     .setlist-song-item {
         padding: var(--space-4);
         gap: var(--space-4);
+        margin-bottom: var(--space-3);
+    }
+    
+    .setlist-song-item.dragging {
+        opacity: 0.8;
+        transform: rotate(3deg) scale(1.05);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+        z-index: 1000;
+    }
+    
+    .setlist-song-item.drag-over {
+        border: 3px dashed var(--primary-500);
+        background: var(--primary-100);
+        transform: scale(1.02);
     }
 }
 
