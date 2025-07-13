@@ -918,17 +918,9 @@ function renderPreviewList() {
         downArrow.disabled = index === builderSongs.length - 1;
         downArrow.addEventListener('click', async () => await moveBuilderSongDown(index));
         
-        // Remove button
-        const removeBtn = document.createElement('button');
-        removeBtn.className = 'builder-remove-btn';
-        removeBtn.innerHTML = '×';
-        removeBtn.title = 'Remove from setlist';
-        removeBtn.addEventListener('click', async () => await removeSongFromBuilder(index));
-        
         li.appendChild(upArrow);
         li.appendChild(songInfo);
         li.appendChild(downArrow);
-        li.appendChild(removeBtn);
         previewList.appendChild(li);
     });
 }
