@@ -60,6 +60,26 @@ let dragSource = null;
 // Search debounce
 let searchTimeout = null;
 
+// Performance optimization variables
+let cachedSetlistItems = new Map();
+let updateTimeout = null;
+let pendingUpdates = new Set();
+
+// Adaptive touch threshold based on screen size
+function getAdaptiveThreshold() {
+    const screenWidth = window.innerWidth;
+    const isMobile = screenWidth <= 768;
+    const isSmallMobile = screenWidth <= 480;
+    
+    if (isSmallMobile) {
+        return 60; // Larger threshold for small screens
+    } else if (isMobile) {
+        return 50; // Standard mobile threshold
+    } else {
+        return 40; // Smaller threshold for desktop
+    }
+}
+
 // Initialize app
 async function init() {
     try {
@@ -707,63 +727,87 @@ function renderSetlistView() {
     const totalDuration = calculateSetlistDurationExact(setlist.song_ids);
     setlistDuration.textContent = formatDurationExact(totalDuration);
     
-    setlistSongs.innerHTML = '';
-    
-    // Remove any existing event listeners
-    setlistSongs.removeEventListener('dragstart', handleSetlistDragStart);
-    setlistSongs.removeEventListener('dragend', handleSetlistDragEnd);
-    setlistSongs.removeEventListener('dragover', handleSetlistDragOver);
-    setlistSongs.removeEventListener('drop', handleSetlistDrop);
-    
     if (setlist.song_ids.length === 0) {
         emptySetlistState.style.display = 'block';
+        setlistSongs.innerHTML = '';
+        cachedSetlistItems.clear();
         return;
     }
 
     emptySetlistState.style.display = 'none';
     
-    setlist.song_ids.forEach((songId, index) => {
+    // Use optimized rendering with cached elements
+    renderSetlistItemsOptimized(setlist.song_ids);
+}
+
+function renderSetlistItemsOptimized(songIds) {
+    const fragment = document.createDocumentFragment();
+    const newCachedItems = new Map();
+    
+    songIds.forEach((songId, index) => {
         const song = songs[songId];
         if (!song) return; // Song might have been deleted
         
-        const li = document.createElement('li');
-        li.className = 'setlist-song-item';
-        li.draggable = true;
-        li.dataset.index = index;
+        // Check if we have a cached item for this song
+        const cacheKey = `${songId}-${index}`;
+        let li = cachedSetlistItems.get(cacheKey);
         
-        // Left drag handle
-        const leftDragHandle = document.createElement('div');
-        leftDragHandle.className = 'drag-handle left-handle';
-        leftDragHandle.innerHTML = '⋮⋮';
-        leftDragHandle.title = 'Drag to reorder';
+        if (!li) {
+            // Create new item
+            li = createSetlistItem(song, index);
+        } else {
+            // Update existing item
+            li.dataset.index = index;
+        }
         
-        const songInfo = document.createElement('div');
-        songInfo.className = 'song-info';
-        songInfo.innerHTML = `${song.title}`;
-        
-        // Right drag handle
-        const rightDragHandle = document.createElement('div');
-        rightDragHandle.className = 'drag-handle right-handle';
-        rightDragHandle.innerHTML = '⋮⋮';
-        rightDragHandle.title = 'Drag to reorder';
-        
-        li.appendChild(leftDragHandle);
-        li.appendChild(songInfo);
-        li.appendChild(rightDragHandle);
-        
-        // Add event listeners directly to each item
-        li.addEventListener('dragstart', handleSetlistDragStart);
-        li.addEventListener('dragend', handleSetlistDragEnd);
-        li.addEventListener('dragover', handleSetlistDragOver);
-        li.addEventListener('drop', handleSetlistDrop);
-        
-        // Add touch support for mobile
-        li.addEventListener('touchstart', handleTouchStart, { passive: false });
-        li.addEventListener('touchmove', handleTouchMove, { passive: false });
-        li.addEventListener('touchend', handleTouchEnd, { passive: false });
-        
-        setlistSongs.appendChild(li);
+        newCachedItems.set(cacheKey, li);
+        fragment.appendChild(li);
     });
+    
+    // Update cache and DOM
+    cachedSetlistItems = newCachedItems;
+    setlistSongs.innerHTML = '';
+    setlistSongs.appendChild(fragment);
+}
+
+function createSetlistItem(song, index) {
+    const li = document.createElement('li');
+    li.className = 'setlist-song-item';
+    li.draggable = true;
+    li.dataset.index = index;
+    
+    // Left drag handle
+    const leftDragHandle = document.createElement('div');
+    leftDragHandle.className = 'drag-handle left-handle';
+    leftDragHandle.innerHTML = '⋮⋮';
+    leftDragHandle.title = 'Drag to reorder';
+    
+    const songInfo = document.createElement('div');
+    songInfo.className = 'song-info';
+    songInfo.innerHTML = `${song.title}`;
+    
+    // Right drag handle
+    const rightDragHandle = document.createElement('div');
+    rightDragHandle.className = 'drag-handle right-handle';
+    rightDragHandle.innerHTML = '⋮⋮';
+    rightDragHandle.title = 'Drag to reorder';
+    
+    li.appendChild(leftDragHandle);
+    li.appendChild(songInfo);
+    li.appendChild(rightDragHandle);
+    
+    // Add event listeners directly to each item
+    li.addEventListener('dragstart', handleSetlistDragStart);
+    li.addEventListener('dragend', handleSetlistDragEnd);
+    li.addEventListener('dragover', handleSetlistDragOver);
+    li.addEventListener('drop', handleSetlistDrop);
+    
+    // Add touch support for mobile
+    li.addEventListener('touchstart', handleTouchStart, { passive: false });
+    li.addEventListener('touchmove', handleTouchMove, { passive: false });
+    li.addEventListener('touchend', handleTouchEnd, { passive: false });
+    
+    return li;
 }
 
 // Setlist drag and drop handlers
@@ -789,7 +833,7 @@ function handleSetlistDragEnd(e) {
     
     item.classList.remove('dragging');
     document.querySelectorAll('.setlist-song-item').forEach(item => {
-        item.classList.remove('drag-over');
+        item.classList.remove('drag-over', 'drop-target-above', 'drop-target-below');
     });
     dragSource = null;
 }
@@ -800,7 +844,25 @@ function handleSetlistDragOver(e) {
     if (!item || item === dragSource) return;
     
     e.dataTransfer.dropEffect = 'move';
+    
+    // Clear previous visual feedback
+    document.querySelectorAll('.setlist-song-item').forEach(el => {
+        el.classList.remove('drag-over', 'drop-target-above', 'drop-target-below');
+    });
+    
+    // Add visual feedback for drop target
     item.classList.add('drag-over');
+    
+    // Create visual space by checking drop position
+    const rect = item.getBoundingClientRect();
+    const mouseY = e.clientY;
+    const itemCenterY = rect.top + rect.height / 2;
+    
+    if (mouseY < itemCenterY) {
+        item.classList.add('drop-target-above');
+    } else {
+        item.classList.add('drop-target-below');
+    }
 }
 
 async function handleSetlistDrop(e) {
@@ -820,8 +882,8 @@ async function handleSetlistDrop(e) {
     // Update local state
     setlists[currentSetlistId].song_ids = songIds;
     
-    // Update database
-    await updateSetlist(currentSetlistId);
+    // Update database with debouncing
+    debouncedUpdateSetlist(currentSetlistId);
     renderSetlistView();
 }
 
@@ -868,7 +930,7 @@ function handleTouchMove(e) {
     
     // Remove drag-over class from all items
     allItems.forEach(item => {
-        item.classList.remove('drag-over');
+        item.classList.remove('drag-over', 'drop-target-above', 'drop-target-below');
     });
     
     // Find the item we should drop on
@@ -888,9 +950,20 @@ function handleTouchMove(e) {
         }
     });
     
-    // Add drag-over class to the closest item
-    if (closestItem && closestDistance < 50) { // 50px threshold
+    // Add drag-over class to the closest item and create visual space
+    const threshold = getAdaptiveThreshold();
+    if (closestItem && closestDistance < threshold) {
         closestItem.classList.add('drag-over');
+        
+        // Create visual space by checking drop position
+        const rect = closestItem.getBoundingClientRect();
+        const itemCenterY = rect.top + rect.height / 2;
+        
+        if (touchCenterY < itemCenterY) {
+            closestItem.classList.add('drop-target-above');
+        } else {
+            closestItem.classList.add('drop-target-below');
+        }
     }
     
     e.preventDefault();
@@ -931,11 +1004,12 @@ async function handleTouchEnd(e) {
     
     // Remove drag-over class from all items
     allItems.forEach(item => {
-        item.classList.remove('drag-over');
+        item.classList.remove('drag-over', 'drop-target-above', 'drop-target-below');
     });
     
     // Perform the drop if we have a valid target and it's close enough
-    if (dropTarget && closestDistance < 50) { // 50px threshold
+    const threshold = getAdaptiveThreshold();
+    if (dropTarget && closestDistance < threshold) {
         const fromIndex = touchStartIndex;
         const toIndex = parseInt(dropTarget.dataset.index);
         
@@ -949,8 +1023,8 @@ async function handleTouchEnd(e) {
             // Update local state
             setlists[currentSetlistId].song_ids = songIds;
             
-            // Update database
-            await updateSetlist(currentSetlistId);
+            // Update database with debouncing
+            debouncedUpdateSetlist(currentSetlistId);
             renderSetlistView();
         }
     }
@@ -1195,6 +1269,30 @@ function formatDurationExact(totalMinutes) {
 // Remove song from setlist function removed - no delete functionality needed
 
 // Database operations
+// Debounced update function for better performance
+function debouncedUpdateSetlist(setlistId) {
+    // Clear any pending timeout
+    if (updateTimeout) {
+        clearTimeout(updateTimeout);
+    }
+    
+    // Add to pending updates
+    pendingUpdates.add(setlistId);
+    
+    // Set new timeout
+    updateTimeout = setTimeout(async () => {
+        // Process all pending updates
+        const updates = Array.from(pendingUpdates);
+        pendingUpdates.clear();
+        
+        for (const id of updates) {
+            await updateSetlist(id);
+        }
+        
+        updateTimeout = null;
+    }, 300); // 300ms debounce
+}
+
 async function updateSetlist(setlistId) {
     const setlist = setlists[setlistId];
     const totalDuration = calculateSetlistDuration(setlist.song_ids);
