@@ -782,6 +782,7 @@ h3 {
 }
 
 #save-setlist-btn {
+    display: none;
     background: #007bff;
     color: #fff;
     border: none;
@@ -1678,6 +1679,7 @@ h3 {
     }
 
     #save-setlist-btn {
+        display: none;
         padding: var(--space-2) var(--space-4);
         font-size: var(--text-sm);
         min-height: 44px;

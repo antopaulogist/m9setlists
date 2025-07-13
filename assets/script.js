@@ -111,6 +111,15 @@ function showSuccess(message) {
     }, 3000);
 }
 
+function showBriefSuccess(message) {
+    successMessage.textContent = message;
+    globalSuccess.style.display = 'block';
+    // Auto-hide after 1 second for brief notifications
+    setTimeout(() => {
+        globalSuccess.style.display = 'none';
+    }, 1000);
+}
+
 function showLoading(show) {
     loadingOverlay.classList.toggle('hidden', !show);
 }
@@ -766,7 +775,7 @@ async function moveSongDown(index) {
 }
 
 // Arrow navigation functions for builder preview reordering
-function moveBuilderSongUp(index) {
+async function moveBuilderSongUp(index) {
     if (index <= 0) return;
     
     // Swap with previous item
@@ -775,9 +784,12 @@ function moveBuilderSongUp(index) {
     // Update UI
     renderPreviewList();
     updateBuilderDuration();
+    
+    // Auto-save changes
+    await autoSaveBuilderSetlist();
 }
 
-function moveBuilderSongDown(index) {
+async function moveBuilderSongDown(index) {
     if (index >= builderSongs.length - 1) return;
     
     // Swap with next item
@@ -786,6 +798,9 @@ function moveBuilderSongDown(index) {
     // Update UI
     renderPreviewList();
     updateBuilderDuration();
+    
+    // Auto-save changes
+    await autoSaveBuilderSetlist();
 }
 
 // Render builder view
@@ -864,11 +879,11 @@ function renderAvailableSongs() {
         if (isInSetlist) {
             addBtn.textContent = 'Remove';
             addBtn.style.backgroundColor = '#6c757d';
-            addBtn.addEventListener('click', () => removeSongFromBuilder(builderSongs.indexOf(songId)));
+            addBtn.addEventListener('click', async () => await removeSongFromBuilder(builderSongs.indexOf(songId)));
         } else {
             addBtn.textContent = 'Add';
             addBtn.style.backgroundColor = '#007bff';
-            addBtn.addEventListener('click', () => addSongToBuilder(songId));
+            addBtn.addEventListener('click', async () => await addSongToBuilder(songId));
         }
         
         songItem.appendChild(songInfo);
@@ -902,7 +917,7 @@ function renderPreviewList() {
         upArrow.innerHTML = '↑';
         upArrow.title = 'Move up';
         upArrow.disabled = index === 0;
-        upArrow.addEventListener('click', () => moveBuilderSongUp(index));
+        upArrow.addEventListener('click', async () => await moveBuilderSongUp(index));
         
         const songInfo = document.createElement('div');
         songInfo.className = 'builder-preview-info';
@@ -924,14 +939,14 @@ function renderPreviewList() {
         downArrow.innerHTML = '↓';
         downArrow.title = 'Move down';
         downArrow.disabled = index === builderSongs.length - 1;
-        downArrow.addEventListener('click', () => moveBuilderSongDown(index));
+        downArrow.addEventListener('click', async () => await moveBuilderSongDown(index));
         
         // Remove button
         const removeBtn = document.createElement('button');
         removeBtn.className = 'builder-remove-btn';
         removeBtn.innerHTML = '×';
         removeBtn.title = 'Remove from setlist';
-        removeBtn.addEventListener('click', () => removeSongFromBuilder(index));
+        removeBtn.addEventListener('click', async () => await removeSongFromBuilder(index));
         
         li.appendChild(upArrow);
         li.appendChild(songInfo);
@@ -942,21 +957,27 @@ function renderPreviewList() {
 }
 
 // Add song to builder
-function addSongToBuilder(songId) {
+async function addSongToBuilder(songId) {
     if (!builderSongs.includes(songId)) {
         builderSongs.push(songId);
         updateBuilderDuration();
         renderAvailableSongs();
         renderPreviewList();
+        
+        // Auto-save changes
+        await autoSaveBuilderSetlist();
     }
 }
 
 // Remove song from builder
-function removeSongFromBuilder(index) {
+async function removeSongFromBuilder(index) {
     builderSongs.splice(index, 1);
     updateBuilderDuration();
     renderAvailableSongs();
     renderPreviewList();
+    
+    // Auto-save changes
+    await autoSaveBuilderSetlist();
 }
 
 // Update builder duration
@@ -970,7 +991,26 @@ function filterAvailableSongs(searchTerm) {
     renderAvailableSongs();
 }
 
-// Save builder setlist
+// Auto-save builder setlist (without leaving the view)
+async function autoSaveBuilderSetlist() {
+    if (!builderSetlistId) return;
+    
+    try {
+        // Update the setlist
+        setlists[builderSetlistId].song_ids = [...builderSongs];
+        
+        // Save to database
+        await updateSetlist(builderSetlistId);
+        
+        // Show brief success indicator (reduced duration for auto-save)
+        showBriefSuccess('Saved');
+    } catch (error) {
+        console.error('Auto-save failed:', error);
+        showError('Failed to save changes automatically');
+    }
+}
+
+// Save builder setlist (manual save - kept for back button navigation)
 async function saveBuilderSetlist() {
     if (!builderSetlistId) return;
     
