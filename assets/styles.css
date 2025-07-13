@@ -681,19 +681,18 @@ h3 {
     min-height: 44px;
     min-width: 44px;
     touch-action: manipulation;
-    transform: rotate(45deg);
 }
 
 .setlist-build-btn:hover {
     background: var(--gray-100);
     color: #000;
-    transform: rotate(45deg) translateY(-1px);
+    transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
 
 .setlist-build-btn:active {
     background: var(--gray-200);
-    transform: rotate(45deg) translateY(0);
+    transform: translateY(0);
 }
 
 .setlist-build-btn:focus {
