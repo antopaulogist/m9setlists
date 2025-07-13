@@ -706,7 +706,7 @@ h3 {
     border: none;
     border-radius: var(--radius-md);
     padding: var(--space-3);
-    font-size: 22px;
+    font-size: 26px;
     font-weight: var(--font-bold);
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -996,7 +996,7 @@ h3 {
     border: none;
     border-radius: var(--radius-md);
     padding: var(--space-2);
-    font-size: 16px;
+    font-size: 20px;
     font-weight: var(--font-bold);
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -1063,7 +1063,7 @@ h3 {
     border: none;
     border-radius: var(--radius-md);
     padding: var(--space-2);
-    font-size: 16px;
+    font-size: 20px;
     font-weight: var(--font-bold);
     cursor: pointer;
     transition: all var(--transition-fast);
