@@ -938,21 +938,9 @@ h3 {
     border: 1px solid var(--gray-200);
     border-radius: var(--radius-md);
     margin-bottom: var(--space-2);
-    cursor: grab;
     user-select: none;
-    transition: background 0.2s, transform 0.1s;
-}
-
-.builder-preview-item.dragging {
-    opacity: 0.5;
-    background: var(--gray-50);
-    cursor: grabbing;
-}
-
-.builder-preview-item.drag-over {
-    transform: translateY(2px);
-    border: 2px dashed var(--primary-500);
-    background: var(--primary-50);
+    transition: background 0.2s;
+    gap: var(--space-2);
 }
 
 /* Checkbox styles for multi-select */
@@ -988,6 +976,7 @@ h3 {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin: 0 var(--space-2);
 }
 
 .builder-preview-title {
@@ -1333,100 +1322,9 @@ h3 {
     border-radius: var(--radius-md);
     margin-bottom: var(--space-2);
     user-select: none;
-    transition: background 0.2s ease, transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.2s ease;
+    transition: background 0.2s ease;
     gap: var(--space-3);
     position: relative;
-    -webkit-tap-highlight-color: transparent !important;
-    -webkit-touch-callout: none !important;
-    -webkit-user-select: none !important;
-    -khtml-user-select: none !important;
-    -moz-user-select: none !important;
-    -ms-user-select: none !important;
-}
-
-.setlist-song-item * {
-    -webkit-tap-highlight-color: transparent !important;
-    -webkit-touch-callout: none !important;
-    -webkit-user-select: none !important;
-    -khtml-user-select: none !important;
-    -moz-user-select: none !important;
-    -ms-user-select: none !important;
-}
-
-
-
-.setlist-song-item.dragging {
-    opacity: 0.9;
-    background: var(--primary-50);
-    border: 2px solid var(--primary-500);
-    box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
-    transform: rotate(1deg);
-    z-index: 1000;
-}
-
-.setlist-song-item.drag-completed {
-    background: var(--primary-50);
-    border: 2px solid var(--primary-500);
-    animation: dragCompleteFade 2s ease-out forwards;
-}
-
-@keyframes dragCompleteFade {
-    0% {
-        background: var(--primary-50);
-        border-color: var(--primary-500);
-    }
-    100% {
-        background: white;
-        border-color: var(--gray-200);
-    }
-}
-
-.setlist-song-item.drag-ready {
-    background: var(--primary-50);
-    transform: scale(1.02);
-}
-
-
-
-.drag-handle {
-    color: var(--gray-400);
-    font-size: var(--text-lg);
-    cursor: grab;
-    padding: var(--space-2);
-    border-radius: var(--radius-sm);
-    transition: color 0.2s, background 0.2s;
-    user-select: none;
-    line-height: 1;
-    min-width: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    touch-action: none;
-    -webkit-tap-highlight-color: transparent !important;
-    -webkit-touch-callout: none !important;
-    -webkit-user-select: none !important;
-    -khtml-user-select: none !important;
-    -moz-user-select: none !important;
-    -ms-user-select: none !important;
-}
-
-.drag-handle:hover {
-    color: var(--gray-600);
-    background: var(--gray-100);
-}
-
-.drag-handle:active {
-    cursor: grabbing;
-    color: var(--gray-700);
-    background: var(--gray-200);
-}
-
-.left-handle {
-    margin-right: var(--space-1);
-}
-
-.right-handle {
-    margin-left: var(--space-1);
 }
 
 .song-info {
@@ -1439,15 +1337,55 @@ h3 {
     justify-content: center;
 }
 
+/* Arrow button styles */
+.arrow-btn {
+    background: none;
+    border: none;
+    font-size: var(--text-xl);
+    color: var(--gray-400);
+    cursor: pointer;
+    padding: var(--space-2);
+    border-radius: var(--radius-sm);
+    transition: color 0.2s, background 0.2s;
+    user-select: none;
+    line-height: 1;
+    min-width: 32px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+}
+
+.arrow-btn:hover:not(:disabled) {
+    color: var(--gray-600);
+    background: var(--gray-100);
+}
+
+.arrow-btn:active:not(:disabled) {
+    color: var(--gray-700);
+    background: var(--gray-200);
+}
+
+.arrow-btn:disabled {
+    color: var(--gray-300);
+    cursor: not-allowed;
+}
+
+.arrow-btn:disabled:hover {
+    background: none;
+}
+
+.up-arrow {
+    margin-right: var(--space-1);
+}
+
+.down-arrow {
+    margin-left: var(--space-1);
+}
+
 /* Mobile-specific styles */
 @media (max-width: 768px) {
-    .drag-handle {
-        padding: var(--space-3);
-        min-width: 40px;
-        min-height: 40px;
-        font-size: var(--text-xl);
-    }
-    
     .setlist-song-item {
         padding: var(--space-4);
         gap: var(--space-4);
@@ -1455,27 +1393,16 @@ h3 {
         min-height: 60px;
     }
     
-    .setlist-song-item.dragging {
-        opacity: 0.8;
-        transform: rotate(3deg) scale(1.05);
-        box-shadow: 0 8px 16px rgba(0,0,0,0.3);
-        z-index: 1000;
+    .arrow-btn {
+        min-width: 40px;
+        min-height: 40px;
+        font-size: var(--text-2xl);
+        padding: var(--space-3);
     }
-    
-
-    
-
 }
 
 /* Small mobile devices */
 @media (max-width: 480px) {
-    .drag-handle {
-        padding: var(--space-4);
-        min-width: 44px;
-        min-height: 44px;
-        font-size: var(--text-2xl);
-    }
-    
     .setlist-song-item {
         padding: var(--space-5);
         gap: var(--space-5);
@@ -1483,7 +1410,12 @@ h3 {
         min-height: 70px;
     }
     
-
+    .arrow-btn {
+        min-width: 44px;
+        min-height: 44px;
+        font-size: var(--text-3xl);
+        padding: var(--space-4);
+    }
 }
 
 /* Context Menu Styles */

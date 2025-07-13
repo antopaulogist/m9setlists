@@ -55,9 +55,7 @@ let songs = {};
 let lastDeleted = null;
 let undoTimeout = null;
 let realtimeChannel = null;
-let draggedElement = null;
-let draggedFromIndex = null;
-let placeholder = null;
+
 
 // Search debounce
 let searchTimeout = null;
@@ -133,52 +131,7 @@ function showConfirmation(message, onConfirm) {
     }
 }
 
-// Drag and Drop Handlers
-function handleDragStart(e) {
-    const item = e.target.closest('.builder-preview-item');
-    if (!item) return;
-    
-    dragSource = item;
-    item.classList.add('dragging');
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', item.dataset.index);
-}
 
-function handleDragEnd(e) {
-    if (!dragSource) return;
-    
-    dragSource.classList.remove('dragging');
-    document.querySelectorAll('.builder-preview-item').forEach(item => {
-        item.classList.remove('drag-over');
-    });
-    dragSource = null;
-}
-
-function handleDragOver(e) {
-    e.preventDefault();
-    const item = e.target.closest('.builder-preview-item');
-    if (!item || item === dragSource) return;
-    
-    e.dataTransfer.dropEffect = 'move';
-    item.classList.add('drag-over');
-}
-
-function handleDrop(e) {
-    e.preventDefault();
-    const dropTarget = e.target.closest('.builder-preview-item');
-    if (!dropTarget || !dragSource || dropTarget === dragSource) return;
-    
-    const fromIndex = parseInt(dragSource.dataset.index);
-    const toIndex = parseInt(dropTarget.dataset.index);
-    
-    // Reorder builderSongs array
-    const [movedSong] = builderSongs.splice(fromIndex, 1);
-    builderSongs.splice(toIndex, 0, movedSong);
-    
-    // Update UI
-    renderPreviewList();
-    updateBuilderDuration();
-}
 
 // Event listeners
 function bindEvents() {
@@ -224,7 +177,7 @@ function bindEvents() {
     }
     
     if (previewList) {
-        // Make the preview list items draggable when rendered
+        // Render the preview list items with arrow navigation
         renderPreviewList();
     }
 }
@@ -738,136 +691,49 @@ function renderSetlistView() {
 function createSetlistItem(song, index) {
     const li = document.createElement('li');
     li.className = 'setlist-song-item';
-    li.draggable = true;
     li.dataset.index = index;
     
-    // Left drag handle
-    const leftDragHandle = document.createElement('div');
-    leftDragHandle.className = 'drag-handle left-handle';
-    leftDragHandle.innerHTML = '⋮⋮';
-    leftDragHandle.title = 'Drag to reorder';
+    // Up arrow button
+    const upArrow = document.createElement('button');
+    upArrow.className = 'arrow-btn up-arrow';
+    upArrow.innerHTML = '↑';
+    upArrow.title = 'Move up';
+    upArrow.disabled = index === 0;
+    upArrow.addEventListener('click', () => moveSongUp(index));
     
     const songInfo = document.createElement('div');
     songInfo.className = 'song-info';
     songInfo.innerHTML = `${song.title}`;
     
-    // Right drag handle
-    const rightDragHandle = document.createElement('div');
-    rightDragHandle.className = 'drag-handle right-handle';
-    rightDragHandle.innerHTML = '⋮⋮';
-    rightDragHandle.title = 'Drag to reorder';
+    // Down arrow button
+    const downArrow = document.createElement('button');
+    downArrow.className = 'arrow-btn down-arrow';
+    downArrow.innerHTML = '↓';
+    downArrow.title = 'Move down';
+    downArrow.disabled = index === setlists[currentSetlistId].song_ids.length - 1;
+    downArrow.addEventListener('click', () => moveSongDown(index));
     
-    li.appendChild(leftDragHandle);
+    li.appendChild(upArrow);
     li.appendChild(songInfo);
-    li.appendChild(rightDragHandle);
-    
-    // Add event listeners directly to each item
-    li.addEventListener('dragstart', handleSetlistDragStart);
-    li.addEventListener('dragend', handleSetlistDragEnd);
-    li.addEventListener('dragover', handleSetlistDragOver);
-    li.addEventListener('drop', handleSetlistDrop);
-    
-    // Add touch support for mobile
-    li.addEventListener('touchstart', handleTouchStart, { passive: false });
-    li.addEventListener('touchmove', handleTouchMove, { passive: false });
-    li.addEventListener('touchend', handleTouchEnd, { passive: false });
+    li.appendChild(downArrow);
     
     return li;
 }
 
-// Setlist drag and drop handlers
-function handleSetlistDragStart(e) {
-    const item = e.target.closest('.setlist-song-item');
-    const dragHandle = e.target.closest('.drag-handle');
-    
-    // Only allow dragging if the drag handle was clicked
-    if (!item || !dragHandle) {
-        e.preventDefault();
-        return;
-    }
-    
-    draggedElement = item;
-    draggedFromIndex = parseInt(item.dataset.index);
-    item.classList.add('dragging');
-    
-    // Create placeholder
-    placeholder = document.createElement('li');
-    placeholder.className = 'setlist-song-item placeholder';
-    placeholder.style.height = item.offsetHeight + 'px';
-    placeholder.style.background = 'transparent';
-    placeholder.style.border = '2px dashed #ccc';
-    placeholder.style.opacity = '0.5';
-    
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', '');
-}
-
-function handleSetlistDragEnd(e) {
-    const item = e.target.closest('.setlist-song-item');
-    if (!item) return;
-    
-    item.classList.remove('dragging');
-    
-    // Remove placeholder if it exists
-    if (placeholder && placeholder.parentNode) {
-        placeholder.parentNode.removeChild(placeholder);
-    }
-    
-    draggedElement = null;
-    draggedFromIndex = null;
-    placeholder = null;
-}
-
-function handleSetlistDragOver(e) {
-    e.preventDefault();
-    if (!draggedElement) return;
-    
-    const item = e.target.closest('.setlist-song-item');
-    if (!item || item === draggedElement || item === placeholder) return;
-    
-    e.dataTransfer.dropEffect = 'move';
-    
-    // Get drop position
-    const rect = item.getBoundingClientRect();
-    const mouseY = e.clientY;
-    const itemCenterY = rect.top + rect.height / 2;
-    const isAbove = mouseY < itemCenterY;
-    
-    // Insert placeholder in the correct position
-    const container = setlistSongs;
-    if (isAbove) {
-        container.insertBefore(placeholder, item);
-    } else {
-        container.insertBefore(placeholder, item.nextSibling);
-    }
-}
 
 
 
-async function handleSetlistDrop(e) {
-    e.preventDefault();
-    if (!draggedElement || !placeholder) return;
+
+
+// Arrow navigation functions for setlist reordering
+async function moveSongUp(index) {
+    if (!currentSetlistId || index <= 0) return;
     
-    // Get the new position from placeholder
-    const container = setlistSongs;
-    const items = Array.from(container.children);
-    const placeholderIndex = items.indexOf(placeholder);
-    
-    // Calculate the new index (accounting for placeholder)
-    let newIndex = placeholderIndex;
-    if (placeholderIndex > draggedFromIndex) {
-        newIndex = placeholderIndex - 1;
-    }
-    
-    // Don't do anything if dropping in the same position
-    if (newIndex === draggedFromIndex) {
-        return;
-    }
-    
-    // Update the song order in data
     const songIds = [...setlists[currentSetlistId].song_ids];
-    const [movedSong] = songIds.splice(draggedFromIndex, 1);
-    songIds.splice(newIndex, 0, movedSong);
+    if (index >= songIds.length) return;
+    
+    // Swap with previous item
+    [songIds[index - 1], songIds[index]] = [songIds[index], songIds[index - 1]];
     
     // Update local state
     setlists[currentSetlistId].song_ids = songIds;
@@ -879,266 +745,46 @@ async function handleSetlistDrop(e) {
     renderSetlistView();
 }
 
-// Touch event handlers for mobile support
-let touchStartY = 0;
-let touchStartX = 0;
-let touchCurrentY = 0;
-let touchOffsetY = 0;
-let touchItem = null;
-let touchStartIndex = 0;
-let isDragging = false;
-let dragStarted = false;
-let touchStartTime = 0;
-let longPressTimer = null;
-
-function handleTouchStart(e) {
-    const item = e.target.closest('.setlist-song-item');
-    const dragHandle = e.target.closest('.drag-handle');
+async function moveSongDown(index) {
+    if (!currentSetlistId) return;
     
-    // Only allow dragging if the drag handle was touched
-    if (!item || !dragHandle) return;
+    const songIds = [...setlists[currentSetlistId].song_ids];
+    if (index >= songIds.length - 1) return;
     
-    // Prevent default touch behavior immediately to stop gray highlighting
-    e.preventDefault();
+    // Swap with next item
+    [songIds[index], songIds[index + 1]] = [songIds[index + 1], songIds[index]];
     
-    touchItem = item;
-    touchStartIndex = parseInt(item.dataset.index);
-    touchStartY = e.touches[0].clientY;
-    touchStartX = e.touches[0].clientX;
-    touchCurrentY = touchStartY;
-    touchStartTime = Date.now();
-    isDragging = false;
-    dragStarted = false;
+    // Update local state
+    setlists[currentSetlistId].song_ids = songIds;
     
-    // Store the initial offset between touch and item center
-    const itemRect = item.getBoundingClientRect();
-    touchOffsetY = touchStartY - (itemRect.top + itemRect.height / 2);
+    // Update database with debouncing
+    debouncedUpdateSetlist(currentSetlistId);
     
-    // Clear any existing timer
-    if (longPressTimer) {
-        clearTimeout(longPressTimer);
-    }
-    
-    // Start long press timer for drag initiation (increased delay)
-    longPressTimer = setTimeout(() => {
-        if (touchItem && !dragStarted) {
-            touchItem.classList.add('drag-ready');
-            setTimeout(() => {
-                if (touchItem && !dragStarted) {
-                    startDrag();
-                }
-            }, 150);
-        }
-    }, 400); // Increased from 150ms to 400ms for less competition with scroll
+    // Re-render the list with new order
+    renderSetlistView();
 }
 
-function startDrag() {
-    if (!touchItem || dragStarted) return;
+// Arrow navigation functions for builder preview reordering
+function moveBuilderSongUp(index) {
+    if (index <= 0) return;
     
-    dragStarted = true;
-    isDragging = true;
+    // Swap with previous item
+    [builderSongs[index - 1], builderSongs[index]] = [builderSongs[index], builderSongs[index - 1]];
     
-    // Add dragging class and prevent touch highlighting
-    touchItem.classList.remove('drag-ready');
-    touchItem.classList.add('dragging');
-    
-    // Create placeholder for touch
-    placeholder = document.createElement('li');
-    placeholder.className = 'setlist-song-item placeholder';
-    placeholder.style.height = touchItem.offsetHeight + 'px';
-    placeholder.style.background = 'transparent';
-    placeholder.style.border = '2px dashed #ccc';
-    placeholder.style.opacity = '0.5';
-    
-    // Prevent scrolling while dragging
-    document.body.style.overflow = 'hidden';
-    
-    // Add haptic feedback if available
-    if (navigator.vibrate) {
-        navigator.vibrate(50);
-    }
+    // Update UI
+    renderPreviewList();
+    updateBuilderDuration();
 }
 
-function handleTouchMove(e) {
-    if (!touchItem) return;
+function moveBuilderSongDown(index) {
+    if (index >= builderSongs.length - 1) return;
     
-    touchCurrentY = e.touches[0].clientY;
-    const touchCurrentX = e.touches[0].clientX;
-    const deltaY = touchCurrentY - touchStartY;
-    const deltaX = touchCurrentX - touchStartX;
+    // Swap with next item
+    [builderSongs[index], builderSongs[index + 1]] = [builderSongs[index + 1], builderSongs[index]];
     
-    // Check if this is a scroll gesture (more horizontal than vertical movement)
-    const isScrollGesture = Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 15;
-    
-    // If it's a scroll gesture, cancel drag
-    if (isScrollGesture && !dragStarted) {
-        cancelDrag();
-        return;
-    }
-    
-    // If we've moved significantly and haven't started dragging, start it
-    if (!dragStarted && Math.abs(deltaY) > 15) {
-        if (longPressTimer) {
-            clearTimeout(longPressTimer);
-        }
-        startDrag();
-    }
-    
-    // Only handle drag movement if we're actually dragging
-    if (!isDragging) return;
-    
-    // Move the item visually with offset compensation
-    const adjustedDeltaY = deltaY - touchOffsetY;
-    touchItem.style.transform = `translateY(${adjustedDeltaY}px)`;
-    touchItem.style.zIndex = '1000';
-    
-    // Get all setlist items
-    const allItems = Array.from(document.querySelectorAll('.setlist-song-item'));
-    const touchItemRect = touchItem.getBoundingClientRect();
-    const touchCenterY = touchItemRect.top + touchItemRect.height / 2;
-    
-    // Find the item we should drop on
-    let closestItem = null;
-    let closestDistance = Infinity;
-    
-    allItems.forEach(item => {
-        if (item === touchItem || item === placeholder) return;
-        
-        const rect = item.getBoundingClientRect();
-        const itemCenterY = rect.top + rect.height / 2;
-        const distance = Math.abs(touchCenterY - itemCenterY);
-        
-        if (distance < closestDistance) {
-            closestDistance = distance;
-            closestItem = item;
-        }
-    });
-    
-    // Move placeholder if we have a valid target
-    if (closestItem && closestDistance < 50) {
-        const rect = closestItem.getBoundingClientRect();
-        const itemCenterY = rect.top + rect.height / 2;
-        const isAbove = touchCenterY < itemCenterY;
-        
-        const container = setlistSongs;
-        if (isAbove) {
-            container.insertBefore(placeholder, closestItem);
-        } else {
-            container.insertBefore(placeholder, closestItem.nextSibling);
-        }
-    }
-    
-    e.preventDefault();
-}
-
-function cancelDrag() {
-    if (longPressTimer) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-    }
-    
-    if (touchItem) {
-        touchItem.classList.remove('dragging', 'drag-ready');
-        touchItem.style.transform = '';
-        touchItem.style.zIndex = '';
-    }
-    
-    if (placeholder && placeholder.parentNode) {
-        placeholder.parentNode.removeChild(placeholder);
-    }
-    
-    document.body.style.overflow = '';
-    
-    touchItem = null;
-    isDragging = false;
-    dragStarted = false;
-    placeholder = null;
-}
-
-async function handleTouchEnd(e) {
-    if (!touchItem) return;
-    
-    // Clear any pending long press timer
-    if (longPressTimer) {
-        clearTimeout(longPressTimer);
-        longPressTimer = null;
-    }
-    
-    let wasDropSuccessful = false;
-    
-    // If we were dragging, handle the drop
-    if (isDragging && placeholder && placeholder.parentNode) {
-        // Get the new position from placeholder
-        const container = setlistSongs;
-        const items = Array.from(container.children);
-        const placeholderIndex = items.indexOf(placeholder);
-        
-        // Calculate the new index (accounting for placeholder)
-        let newIndex = placeholderIndex;
-        if (placeholderIndex > touchStartIndex) {
-            newIndex = placeholderIndex - 1;
-        }
-        
-        // Update if position changed
-        if (newIndex !== touchStartIndex) {
-            wasDropSuccessful = true;
-            
-            // Update the song order in data
-            const songIds = [...setlists[currentSetlistId].song_ids];
-            const [movedSong] = songIds.splice(touchStartIndex, 1);
-            songIds.splice(newIndex, 0, movedSong);
-            
-            // Update local state
-            setlists[currentSetlistId].song_ids = songIds;
-            
-            // Update database with debouncing
-            debouncedUpdateSetlist(currentSetlistId);
-            
-            // Re-render the list with new order
-            renderSetlistView();
-        }
-    }
-    
-    // Clean up drag state
-    if (touchItem) {
-        touchItem.classList.remove('dragging', 'drag-ready');
-        touchItem.style.transform = '';
-        touchItem.style.zIndex = '';
-        
-        // Add completion highlight if drop was successful
-        if (wasDropSuccessful) {
-            // Find the item in the new position after re-render
-            setTimeout(() => {
-                const newItem = document.querySelector(`[data-index="${newIndex || touchStartIndex}"]`);
-                if (newItem) {
-                    newItem.classList.add('drag-completed');
-                    setTimeout(() => {
-                        newItem.classList.remove('drag-completed');
-                    }, 2000);
-                }
-            }, 100);
-        }
-    }
-    
-    if (placeholder && placeholder.parentNode) {
-        placeholder.parentNode.removeChild(placeholder);
-    }
-    
-    // Re-enable scrolling
-    document.body.style.overflow = '';
-    
-    // Reset all touch variables
-    touchItem = null;
-    touchStartY = 0;
-    touchStartX = 0;
-    touchCurrentY = 0;
-    touchStartIndex = 0;
-    touchStartTime = 0;
-    isDragging = false;
-    dragStarted = false;
-    placeholder = null;
-    
-    // Don't prevent default to allow normal touch behavior
+    // Update UI
+    renderPreviewList();
+    updateBuilderDuration();
 }
 
 // Render builder view
@@ -1241,14 +887,15 @@ function renderPreviewList() {
         
         const li = document.createElement('li');
         li.className = 'builder-preview-item';
-        li.draggable = true;
         li.dataset.index = index;
         
-        // Add drag and drop event listeners directly to the item
-        li.addEventListener('dragstart', handleDragStart);
-        li.addEventListener('dragend', handleDragEnd);
-        li.addEventListener('dragover', handleDragOver);
-        li.addEventListener('drop', handleDrop);
+        // Up arrow button
+        const upArrow = document.createElement('button');
+        upArrow.className = 'arrow-btn up-arrow';
+        upArrow.innerHTML = '↑';
+        upArrow.title = 'Move up';
+        upArrow.disabled = index === 0;
+        upArrow.addEventListener('click', () => moveBuilderSongUp(index));
         
         const songInfo = document.createElement('div');
         songInfo.className = 'builder-preview-info';
@@ -1264,6 +911,14 @@ function renderPreviewList() {
         songInfo.appendChild(songTitle);
         songInfo.appendChild(songDuration);
         
+        // Down arrow button
+        const downArrow = document.createElement('button');
+        downArrow.className = 'arrow-btn down-arrow';
+        downArrow.innerHTML = '↓';
+        downArrow.title = 'Move down';
+        downArrow.disabled = index === builderSongs.length - 1;
+        downArrow.addEventListener('click', () => moveBuilderSongDown(index));
+        
         // Remove button
         const removeBtn = document.createElement('button');
         removeBtn.className = 'builder-remove-btn';
@@ -1271,7 +926,9 @@ function renderPreviewList() {
         removeBtn.title = 'Remove from setlist';
         removeBtn.addEventListener('click', () => removeSongFromBuilder(index));
         
+        li.appendChild(upArrow);
         li.appendChild(songInfo);
+        li.appendChild(downArrow);
         li.appendChild(removeBtn);
         previewList.appendChild(li);
     });
