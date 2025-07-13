@@ -496,7 +496,7 @@ function renderSetlists() {
                          // Build button
      const buildBtn = document.createElement('button');
      buildBtn.className = 'setlist-build-btn';
-             buildBtn.innerHTML = '<span style="transform: rotate(45deg); display: inline-block;">✎</span>';
+             buildBtn.innerHTML = '<span style="transform: rotate(90deg); display: inline-block;">✎</span>';
      buildBtn.title = 'Edit this setlist';
      buildBtn.addEventListener('click', (e) => {
          e.stopPropagation();
