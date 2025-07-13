@@ -1343,10 +1343,7 @@ h3 {
     transform: rotate(2deg);
 }
 
-.setlist-song-item.drag-over {
-    border: 2px dashed var(--primary-500);
-    background: var(--primary-50);
-}
+
 
 .drag-handle {
     color: var(--gray-400);
@@ -1416,11 +1413,7 @@ h3 {
         z-index: 1000;
     }
     
-    .setlist-song-item.drag-over {
-        border: 3px dashed var(--primary-500);
-        background: var(--primary-100);
-        transform: scale(1.02);
-    }
+
     
 
 }
