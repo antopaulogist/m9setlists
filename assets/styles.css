@@ -677,46 +677,12 @@ h3 {
 }
 
 .setlist-build-btn {
-    background: var(--success-500);
-    color: white;
-    border: none;
-    border-radius: var(--radius-md);
-    padding: var(--space-3) var(--space-4);
-    font-size: var(--text-sm);
-    font-weight: var(--font-medium);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 44px;
-    min-width: 64px;
-    touch-action: manipulation;
-}
-
-.setlist-build-btn:hover {
-    background: var(--success-600);
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-}
-
-.setlist-build-btn:active {
-    background: var(--success-700);
-    transform: translateY(0);
-}
-
-.setlist-build-btn:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.15);
-}
-
-.setlist-delete-btn {
-    background: var(--error-500);
-    color: white;
-    border: none;
+    background: transparent;
+    color: var(--gray-600);
+    border: 1px solid var(--gray-300);
     border-radius: var(--radius-md);
     padding: var(--space-3);
-    font-size: var(--text-base);
+    font-size: 16px;
     font-weight: var(--font-medium);
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -728,14 +694,53 @@ h3 {
     touch-action: manipulation;
 }
 
-.setlist-delete-btn:hover {
-    background: var(--error-600);
+.setlist-build-btn:hover {
+    background: var(--gray-100);
+    color: var(--gray-700);
+    border-color: var(--gray-400);
     transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-sm);
+}
+
+.setlist-build-btn:active {
+    background: var(--gray-200);
+    transform: translateY(0);
+}
+
+.setlist-build-btn:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.setlist-delete-btn {
+    background: white;
+    color: var(--error-500);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
+    font-size: 18px;
+    font-weight: var(--font-bold);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+}
+
+.setlist-delete-btn:hover {
+    background: var(--error-50);
+    color: var(--error-600);
+    border-color: var(--error-300);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 
 .setlist-delete-btn:active {
-    background: var(--error-700);
+    background: var(--error-100);
+    color: var(--error-700);
     transform: translateY(0);
 }
 
@@ -750,8 +755,8 @@ h3 {
     align-items: center;
     justify-content: space-between;
     max-width: 800px;
-    margin: 20px auto 0;
-    padding: 0 20px;
+    margin: var(--space-6) auto var(--space-8);
+    padding: 0 var(--space-5);
 }
 
 #builder-back-btn {
@@ -771,7 +776,7 @@ h3 {
 
 #builder-title {
     flex: 1;
-    margin: 0 15px;
+    margin: 0 var(--space-4);
     font-size: 24px;
     text-align: center;
     color: #333;
@@ -797,7 +802,7 @@ h3 {
     display: flex;
     gap: 20px;
     max-width: 800px;
-    margin: 20px auto;
+    margin: 0 auto;
     padding: 0 20px;
 }
 
@@ -1015,6 +1020,7 @@ h3 {
     justify-content: space-between;
     align-items: center;
     transition: background 0.2s;
+    gap: var(--space-4);
 }
 
 .song-item:hover {
@@ -1023,46 +1029,65 @@ h3 {
 
 .song-info {
     flex: 1;
-    text-align: left;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .song-title {
     font-weight: bold;
     color: #333;
-    margin-bottom: 2px;
+    margin: 0;
+    text-align: left;
 }
 
 .song-duration {
     font-size: 13px;
     color: #666;
+    text-align: right;
+    margin-left: auto;
 }
 
 .song-actions {
     display: flex;
     gap: 8px;
+    flex-shrink: 0;
 }
 
 .song-action-btn {
-    background: #6c757d;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 6px 10px;
-    font-size: 12px;
+    background: white;
+    color: var(--error-500);
+    border: 1px solid var(--gray-300);
+    border-radius: var(--radius-md);
+    padding: var(--space-2);
+    font-size: 14px;
+    font-weight: var(--font-bold);
     cursor: pointer;
-    transition: background 0.2s;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    min-width: 32px;
+    touch-action: manipulation;
 }
 
 .song-action-btn:hover {
-    background: #5a6268;
+    background: var(--error-50);
+    color: var(--error-600);
+    border-color: var(--error-300);
 }
 
 .song-action-btn.delete {
-    background: #dc3545;
+    background: white;
+    color: var(--error-500);
+    border-color: var(--gray-300);
 }
 
 .song-action-btn.delete:hover {
-    background: #a71d2a;
+    background: var(--error-50);
+    color: var(--error-600);
+    border-color: var(--error-300);
 }
 
 /* Input Row Styles */
@@ -1626,7 +1651,7 @@ h3 {
     }
 
     #builder-header {
-        margin: var(--space-4) auto 0;
+        margin: var(--space-4) auto var(--space-6);
         padding: 0 var(--space-4);
     }
 
