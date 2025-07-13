@@ -13,8 +13,6 @@ const navTabs = document.querySelectorAll('.nav-tab');
 // Global UI Elements
 const globalError = document.getElementById('global-error');
 const errorMessage = document.getElementById('error-message');
-const globalSuccess = document.getElementById('global-success');
-const successMessage = document.getElementById('success-message');
 const loadingOverlay = document.getElementById('loading-overlay');
 
 // Form Elements
@@ -43,7 +41,6 @@ const emptySetlistState = document.getElementById('empty-setlist-state');
 const noSetlistsState = document.getElementById('no-setlists-state');
 const noSongsState = document.getElementById('no-songs-state');
 const totalDurationEl = document.getElementById('total-duration');
-const undoDiv = document.getElementById('undo-div');
 
 // State
 let currentView = 'setlists';
@@ -52,8 +49,6 @@ let builderSetlistId = null;
 let builderSongs = [];
 let setlists = {};
 let songs = {};
-let lastDeleted = null;
-let undoTimeout = null;
 let realtimeChannel = null;
 
 
@@ -102,23 +97,7 @@ function showError(message, duration = 5000) {
     }, duration);
 }
 
-function showSuccess(message) {
-    successMessage.textContent = message;
-    globalSuccess.style.display = 'block';
-    // Auto-hide after 3 seconds
-    setTimeout(() => {
-        globalSuccess.style.display = 'none';
-    }, 3000);
-}
 
-function showBriefSuccess(message) {
-    successMessage.textContent = message;
-    globalSuccess.style.display = 'block';
-    // Auto-hide after 1 second for brief notifications
-    setTimeout(() => {
-        globalSuccess.style.display = 'none';
-    }, 1000);
-}
 
 function showLoading(show) {
     loadingOverlay.classList.toggle('hidden', !show);
@@ -467,7 +446,6 @@ async function createSetlist(e) {
             renderSetlists();
             newSetlistInput.value = '';
             newSetlistInput.focus();
-            showSuccess('Setlist created successfully!');
         }
     } catch (error) {
         console.error('Error creating setlist:', error);
@@ -587,7 +565,6 @@ async function addSong(e) {
             songMinutes.value = '';
             songSeconds.value = '';
             newSongInput.focus();
-            showSuccess('Song added successfully!');
         }
     } catch (error) {
         console.error('Error adding song:', error);
@@ -1001,9 +978,6 @@ async function autoSaveBuilderSetlist() {
         
         // Save to database
         await updateSetlist(builderSetlistId);
-        
-        // Show brief success indicator (reduced duration for auto-save)
-        showBriefSuccess('Saved');
     } catch (error) {
         console.error('Auto-save failed:', error);
         showError('Failed to save changes automatically');
@@ -1185,31 +1159,7 @@ function handleTitleKeydown(e) {
     }
 }
 
-// Undo functionality
-function showUndo(undoCallback) {
-    if (!undoDiv) return;
-    
-    // Clear any existing undo timeout
-    if (undoTimeout) {
-        clearTimeout(undoTimeout);
-    }
-    
-    // Create and show the undo button
-    undoDiv.innerHTML = '<button id="undo-btn" class="undo-btn">Undo</button>';
-    const undoBtn = document.getElementById('undo-btn');
-    if (undoBtn) {
-        undoBtn.onclick = undoCallback;
-    }
-    
-    undoDiv.style.display = 'flex';
-    
-    // Auto-hide after 5 seconds
-    undoTimeout = setTimeout(() => {
-        if (undoDiv) {
-            undoDiv.style.display = 'none';
-        }
-    }, 5000);
-}
+
 
 // Initialize app when DOM and Supabase are ready
 function waitForSupabase() {
