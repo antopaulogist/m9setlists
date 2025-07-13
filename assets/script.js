@@ -55,30 +55,18 @@ let songs = {};
 let lastDeleted = null;
 let undoTimeout = null;
 let realtimeChannel = null;
-let dragSource = null;
+let draggedElement = null;
+let draggedFromIndex = null;
+let placeholder = null;
 
 // Search debounce
 let searchTimeout = null;
 
 // Performance optimization variables
-let cachedSetlistItems = new Map();
 let updateTimeout = null;
 let pendingUpdates = new Set();
 
-// Adaptive touch threshold based on screen size
-function getAdaptiveThreshold() {
-    const screenWidth = window.innerWidth;
-    const isMobile = screenWidth <= 768;
-    const isSmallMobile = screenWidth <= 480;
-    
-    if (isSmallMobile) {
-        return 60; // Larger threshold for small screens
-    } else if (isMobile) {
-        return 50; // Standard mobile threshold
-    } else {
-        return 40; // Smaller threshold for desktop
-    }
-}
+
 
 // Initialize app
 async function init() {
@@ -730,44 +718,21 @@ function renderSetlistView() {
     if (setlist.song_ids.length === 0) {
         emptySetlistState.style.display = 'block';
         setlistSongs.innerHTML = '';
-        cachedSetlistItems.clear();
         return;
     }
 
     emptySetlistState.style.display = 'none';
     
-    // Use optimized rendering with cached elements
-    renderSetlistItemsOptimized(setlist.song_ids);
-}
-
-function renderSetlistItemsOptimized(songIds) {
-    const fragment = document.createDocumentFragment();
-    const newCachedItems = new Map();
+    // Clear and rebuild the list
+    setlistSongs.innerHTML = '';
     
-    songIds.forEach((songId, index) => {
+    setlist.song_ids.forEach((songId, index) => {
         const song = songs[songId];
         if (!song) return; // Song might have been deleted
         
-        // Check if we have a cached item for this song
-        const cacheKey = `${songId}-${index}`;
-        let li = cachedSetlistItems.get(cacheKey);
-        
-        if (!li) {
-            // Create new item
-            li = createSetlistItem(song, index);
-        } else {
-            // Update existing item
-            li.dataset.index = index;
-        }
-        
-        newCachedItems.set(cacheKey, li);
-        fragment.appendChild(li);
+        const li = createSetlistItem(song, index);
+        setlistSongs.appendChild(li);
     });
-    
-    // Update cache and DOM
-    cachedSetlistItems = newCachedItems;
-    setlistSongs.innerHTML = '';
-    setlistSongs.appendChild(fragment);
 }
 
 function createSetlistItem(song, index) {
@@ -821,10 +786,20 @@ function handleSetlistDragStart(e) {
         return;
     }
     
-    dragSource = item;
+    draggedElement = item;
+    draggedFromIndex = parseInt(item.dataset.index);
     item.classList.add('dragging');
+    
+    // Create placeholder
+    placeholder = document.createElement('li');
+    placeholder.className = 'setlist-song-item placeholder';
+    placeholder.style.height = item.offsetHeight + 'px';
+    placeholder.style.background = 'transparent';
+    placeholder.style.border = '2px dashed #ccc';
+    placeholder.style.opacity = '0.5';
+    
     e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', item.dataset.index);
+    e.dataTransfer.setData('text/plain', '');
 }
 
 function handleSetlistDragEnd(e) {
@@ -833,16 +808,22 @@ function handleSetlistDragEnd(e) {
     
     item.classList.remove('dragging');
     
-    // Clear drop indicators
-    clearDropIndicator();
+    // Remove placeholder if it exists
+    if (placeholder && placeholder.parentNode) {
+        placeholder.parentNode.removeChild(placeholder);
+    }
     
-    dragSource = null;
+    draggedElement = null;
+    draggedFromIndex = null;
+    placeholder = null;
 }
 
 function handleSetlistDragOver(e) {
     e.preventDefault();
+    if (!draggedElement) return;
+    
     const item = e.target.closest('.setlist-song-item');
-    if (!item || item === dragSource) return;
+    if (!item || item === draggedElement || item === placeholder) return;
     
     e.dataTransfer.dropEffect = 'move';
     
@@ -852,121 +833,41 @@ function handleSetlistDragOver(e) {
     const itemCenterY = rect.top + rect.height / 2;
     const isAbove = mouseY < itemCenterY;
     
-    // Calculate new position
-    const allItems = Array.from(document.querySelectorAll('.setlist-song-item'));
-    const currentIndex = allItems.indexOf(dragSource);
-    const targetIndex = allItems.indexOf(item);
-    
-    let newIndex;
+    // Insert placeholder in the correct position
+    const container = setlistSongs;
     if (isAbove) {
-        newIndex = targetIndex;
+        container.insertBefore(placeholder, item);
     } else {
-        newIndex = targetIndex + 1;
-    }
-    
-    // Don't do anything if we're dropping in the same position
-    if (newIndex === currentIndex || newIndex === currentIndex + 1) {
-        clearDropIndicator();
-        return;
-    }
-    
-    // Show where the item will be dropped
-    showDropIndicator(currentIndex, newIndex);
-    
-    // Auto-scroll if near edges
-    handleAutoScroll(mouseY);
-}
-
-function clearDropIndicator() {
-    document.querySelectorAll('.setlist-song-item').forEach(item => {
-        item.style.transform = '';
-        item.classList.remove('drop-indicator');
-    });
-}
-
-function showDropIndicator(fromIndex, toIndex) {
-    clearDropIndicator();
-    
-    const allItems = Array.from(document.querySelectorAll('.setlist-song-item'));
-    const itemHeight = 60; // Approximate item height + margin
-    
-    allItems.forEach((item, index) => {
-        if (item === dragSource) return;
-        
-        let offset = 0;
-        
-        if (fromIndex < toIndex) {
-            // Moving down: shift items up between fromIndex and toIndex
-            if (index > fromIndex && index < toIndex) {
-                offset = -itemHeight;
-            }
-        } else {
-            // Moving up: shift items down between toIndex and fromIndex
-            if (index >= toIndex && index < fromIndex) {
-                offset = itemHeight;
-            }
-        }
-        
-        if (offset !== 0) {
-            item.style.transform = `translateY(${offset}px)`;
-        }
-    });
-}
-
-
-
-function handleAutoScroll(mouseY) {
-    const scrollContainer = document.documentElement;
-    const scrollThreshold = 100;
-    const scrollSpeed = 10;
-    
-    const viewportHeight = window.innerHeight;
-    const scrollTop = scrollContainer.scrollTop;
-    
-    // Scroll up if near top
-    if (mouseY < scrollThreshold) {
-        scrollContainer.scrollTop = Math.max(0, scrollTop - scrollSpeed);
-    }
-    // Scroll down if near bottom
-    else if (mouseY > viewportHeight - scrollThreshold) {
-        scrollContainer.scrollTop = scrollTop + scrollSpeed;
+        container.insertBefore(placeholder, item.nextSibling);
     }
 }
+
+
 
 async function handleSetlistDrop(e) {
     e.preventDefault();
-    if (!dragSource) return;
+    if (!draggedElement || !placeholder) return;
     
-    const dropTarget = e.target.closest('.setlist-song-item');
-    if (!dropTarget || dropTarget === dragSource) return;
+    // Get the new position from placeholder
+    const container = setlistSongs;
+    const items = Array.from(container.children);
+    const placeholderIndex = items.indexOf(placeholder);
     
-    // Get drop position
-    const rect = dropTarget.getBoundingClientRect();
-    const mouseY = e.clientY;
-    const itemCenterY = rect.top + rect.height / 2;
-    const isAbove = mouseY < itemCenterY;
-    
-    // Calculate indices
-    const allItems = Array.from(document.querySelectorAll('.setlist-song-item'));
-    const fromIndex = allItems.indexOf(dragSource);
-    const targetIndex = allItems.indexOf(dropTarget);
-    
-    let toIndex;
-    if (isAbove) {
-        toIndex = targetIndex;
-    } else {
-        toIndex = targetIndex + 1;
+    // Calculate the new index (accounting for placeholder)
+    let newIndex = placeholderIndex;
+    if (placeholderIndex > draggedFromIndex) {
+        newIndex = placeholderIndex - 1;
     }
     
-    // Don't do anything if we're dropping in the same position
-    if (toIndex === fromIndex || toIndex === fromIndex + 1) {
+    // Don't do anything if dropping in the same position
+    if (newIndex === draggedFromIndex) {
         return;
     }
     
     // Update the song order in data
     const songIds = [...setlists[currentSetlistId].song_ids];
-    const [movedSong] = songIds.splice(fromIndex, 1);
-    songIds.splice(toIndex > fromIndex ? toIndex - 1 : toIndex, 0, movedSong);
+    const [movedSong] = songIds.splice(draggedFromIndex, 1);
+    songIds.splice(newIndex, 0, movedSong);
     
     // Update local state
     setlists[currentSetlistId].song_ids = songIds;
@@ -998,6 +899,14 @@ function handleTouchStart(e) {
     
     item.classList.add('dragging');
     
+    // Create placeholder for touch
+    placeholder = document.createElement('li');
+    placeholder.className = 'setlist-song-item placeholder';
+    placeholder.style.height = item.offsetHeight + 'px';
+    placeholder.style.background = 'transparent';
+    placeholder.style.border = '2px dashed #ccc';
+    placeholder.style.opacity = '0.5';
+    
     // Prevent scrolling while dragging
     document.body.style.overflow = 'hidden';
     
@@ -1024,7 +933,7 @@ function handleTouchMove(e) {
     let closestDistance = Infinity;
     
     allItems.forEach(item => {
-        if (item === touchItem) return;
+        if (item === touchItem || item === placeholder) return;
         
         const rect = item.getBoundingClientRect();
         const itemCenterY = rect.top + rect.height / 2;
@@ -1036,35 +945,19 @@ function handleTouchMove(e) {
         }
     });
     
-    // Show drop indicator if we have a valid target
-    const threshold = getAdaptiveThreshold();
-    if (closestItem && closestDistance < threshold) {
+    // Move placeholder if we have a valid target
+    if (closestItem && closestDistance < 50) {
         const rect = closestItem.getBoundingClientRect();
         const itemCenterY = rect.top + rect.height / 2;
         const isAbove = touchCenterY < itemCenterY;
         
-        const currentIndex = allItems.indexOf(touchItem);
-        const targetIndex = allItems.indexOf(closestItem);
-        
-        let newIndex;
+        const container = setlistSongs;
         if (isAbove) {
-            newIndex = targetIndex;
+            container.insertBefore(placeholder, closestItem);
         } else {
-            newIndex = targetIndex + 1;
+            container.insertBefore(placeholder, closestItem.nextSibling);
         }
-        
-        // Show drop indicator if position changed
-        if (newIndex !== currentIndex && newIndex !== currentIndex + 1) {
-            showDropIndicator(currentIndex, newIndex);
-        } else {
-            clearDropIndicator();
-        }
-    } else {
-        clearDropIndicator();
     }
-    
-    // Auto-scroll if near edges
-    handleAutoScroll(touchCenterY);
     
     e.preventDefault();
 }
@@ -1075,59 +968,30 @@ async function handleTouchEnd(e) {
     // Re-enable scrolling
     document.body.style.overflow = '';
     
-    // Get all setlist items
-    const allItems = Array.from(document.querySelectorAll('.setlist-song-item'));
-    const touchItemRect = touchItem.getBoundingClientRect();
-    const touchCenterY = touchItemRect.top + touchItemRect.height / 2;
-    
-    // Find the item we should drop on
-    let dropTarget = null;
-    let closestDistance = Infinity;
-    
-    allItems.forEach(item => {
-        if (item === touchItem) return;
-        
-        const rect = item.getBoundingClientRect();
-        const itemCenterY = rect.top + rect.height / 2;
-        const distance = Math.abs(touchCenterY - itemCenterY);
-        
-        if (distance < closestDistance) {
-            closestDistance = distance;
-            dropTarget = item;
-        }
-    });
-    
     // Reset visual state
     touchItem.style.transform = '';
     touchItem.style.zIndex = '';
     touchItem.classList.remove('dragging');
     
-    // Clear drop indicators
-    clearDropIndicator();
-    
-    // Perform the drop if we have a valid target
-    const threshold = getAdaptiveThreshold();
-    if (dropTarget && closestDistance < threshold) {
-        const rect = dropTarget.getBoundingClientRect();
-        const itemCenterY = rect.top + rect.height / 2;
-        const isAbove = touchCenterY < itemCenterY;
+    // Handle drop if placeholder exists
+    if (placeholder && placeholder.parentNode) {
+        // Get the new position from placeholder
+        const container = setlistSongs;
+        const items = Array.from(container.children);
+        const placeholderIndex = items.indexOf(placeholder);
         
-        const fromIndex = allItems.indexOf(touchItem);
-        const targetIndex = allItems.indexOf(dropTarget);
-        
-        let toIndex;
-        if (isAbove) {
-            toIndex = targetIndex;
-        } else {
-            toIndex = targetIndex + 1;
+        // Calculate the new index (accounting for placeholder)
+        let newIndex = placeholderIndex;
+        if (placeholderIndex > touchStartIndex) {
+            newIndex = placeholderIndex - 1;
         }
         
-        // Only update if position changed
-        if (toIndex !== fromIndex && toIndex !== fromIndex + 1) {
+        // Update if position changed
+        if (newIndex !== touchStartIndex) {
             // Update the song order in data
             const songIds = [...setlists[currentSetlistId].song_ids];
-            const [movedSong] = songIds.splice(fromIndex, 1);
-            songIds.splice(toIndex > fromIndex ? toIndex - 1 : toIndex, 0, movedSong);
+            const [movedSong] = songIds.splice(touchStartIndex, 1);
+            songIds.splice(newIndex, 0, movedSong);
             
             // Update local state
             setlists[currentSetlistId].song_ids = songIds;
@@ -1138,12 +1002,16 @@ async function handleTouchEnd(e) {
             // Re-render the list with new order
             renderSetlistView();
         }
+        
+        // Remove placeholder
+        placeholder.parentNode.removeChild(placeholder);
     }
     
     touchItem = null;
     touchStartY = 0;
     touchCurrentY = 0;
     touchStartIndex = 0;
+    placeholder = null;
     
     e.preventDefault();
 }
