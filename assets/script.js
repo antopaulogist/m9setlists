@@ -788,7 +788,7 @@ function renderBuilderView() {
     }
 
     const setlist = setlists[builderSetlistId];
-    builderTitle.textContent = `Build: ${setlist.name}`;
+            builderTitle.textContent = `Edit: ${setlist.name}`;
     
     // Update total duration
     updateBuilderDuration();
