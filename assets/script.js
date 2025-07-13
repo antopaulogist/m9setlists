@@ -832,9 +832,7 @@ function handleSetlistDragEnd(e) {
     if (!item) return;
     
     item.classList.remove('dragging');
-    document.querySelectorAll('.setlist-song-item').forEach(item => {
-        item.classList.remove('drag-over', 'drop-target-above', 'drop-target-below');
-    });
+    clearDragVisualFeedback();
     dragSource = null;
 }
 
@@ -846,23 +844,50 @@ function handleSetlistDragOver(e) {
     e.dataTransfer.dropEffect = 'move';
     
     // Clear previous visual feedback
-    document.querySelectorAll('.setlist-song-item').forEach(el => {
-        el.classList.remove('drag-over', 'drop-target-above', 'drop-target-below');
-    });
+    clearDragVisualFeedback();
     
     // Add visual feedback for drop target
     item.classList.add('drag-over');
     
-    // Create visual space by checking drop position
-    const rect = item.getBoundingClientRect();
-    const mouseY = e.clientY;
+    // Create smooth visual space
+    createSmoothDropSpace(item, e.clientY);
+}
+
+function clearDragVisualFeedback() {
+    document.querySelectorAll('.setlist-song-item').forEach(el => {
+        el.classList.remove('drag-over', 'drop-target-above', 'drop-target-below');
+        el.style.transform = '';
+    });
+}
+
+function createSmoothDropSpace(targetItem, mouseY) {
+    const rect = targetItem.getBoundingClientRect();
     const itemCenterY = rect.top + rect.height / 2;
+    const isAbove = mouseY < itemCenterY;
     
-    if (mouseY < itemCenterY) {
-        item.classList.add('drop-target-above');
-    } else {
-        item.classList.add('drop-target-below');
-    }
+    const allItems = Array.from(document.querySelectorAll('.setlist-song-item'));
+    const targetIndex = allItems.indexOf(targetItem);
+    
+    // Get responsive spacing
+    const screenWidth = window.innerWidth;
+    const spacing = screenWidth <= 480 ? '50px' : screenWidth <= 768 ? '45px' : '40px';
+    
+    // Create space by moving items
+    allItems.forEach((item, index) => {
+        if (item === dragSource) return;
+        
+        if (isAbove) {
+            // Dropping above target - move target and items below down
+            if (index >= targetIndex) {
+                item.style.transform = `translateY(${spacing})`;
+            }
+        } else {
+            // Dropping below target - move items below target down
+            if (index > targetIndex) {
+                item.style.transform = `translateY(${spacing})`;
+            }
+        }
+    });
 }
 
 async function handleSetlistDrop(e) {
@@ -928,10 +953,8 @@ function handleTouchMove(e) {
     const touchItemRect = touchItem.getBoundingClientRect();
     const touchCenterY = touchItemRect.top + touchItemRect.height / 2;
     
-    // Remove drag-over class from all items
-    allItems.forEach(item => {
-        item.classList.remove('drag-over', 'drop-target-above', 'drop-target-below');
-    });
+    // Clear previous visual feedback
+    clearDragVisualFeedback();
     
     // Find the item we should drop on
     let closestItem = null;
@@ -954,16 +977,7 @@ function handleTouchMove(e) {
     const threshold = getAdaptiveThreshold();
     if (closestItem && closestDistance < threshold) {
         closestItem.classList.add('drag-over');
-        
-        // Create visual space by checking drop position
-        const rect = closestItem.getBoundingClientRect();
-        const itemCenterY = rect.top + rect.height / 2;
-        
-        if (touchCenterY < itemCenterY) {
-            closestItem.classList.add('drop-target-above');
-        } else {
-            closestItem.classList.add('drop-target-below');
-        }
+        createSmoothDropSpace(closestItem, touchCenterY);
     }
     
     e.preventDefault();
@@ -1002,10 +1016,8 @@ async function handleTouchEnd(e) {
     touchItem.style.zIndex = '';
     touchItem.classList.remove('dragging');
     
-    // Remove drag-over class from all items
-    allItems.forEach(item => {
-        item.classList.remove('drag-over', 'drop-target-above', 'drop-target-below');
-    });
+    // Clear visual feedback
+    clearDragVisualFeedback();
     
     // Perform the drop if we have a valid target and it's close enough
     const threshold = getAdaptiveThreshold();
