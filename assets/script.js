@@ -898,6 +898,9 @@ function handleTouchStart(e) {
     // Only allow dragging if the drag handle was touched
     if (!item || !dragHandle) return;
     
+    // Prevent default touch behavior immediately to stop gray highlighting
+    e.preventDefault();
+    
     touchItem = item;
     touchStartIndex = parseInt(item.dataset.index);
     touchStartY = e.touches[0].clientY;
@@ -927,8 +930,6 @@ function handleTouchStart(e) {
             }, 150);
         }
     }, 400); // Increased from 150ms to 400ms for less competition with scroll
-    
-    // Don't prevent default yet - let browser handle normal touch
 }
 
 function startDrag() {
