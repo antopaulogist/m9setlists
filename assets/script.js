@@ -709,6 +709,12 @@ function renderSetlistView() {
     
     setlistSongs.innerHTML = '';
     
+    // Remove any existing event listeners
+    setlistSongs.removeEventListener('dragstart', handleSetlistDragStart);
+    setlistSongs.removeEventListener('dragend', handleSetlistDragEnd);
+    setlistSongs.removeEventListener('dragover', handleSetlistDragOver);
+    setlistSongs.removeEventListener('drop', handleSetlistDrop);
+    
     if (setlist.song_ids.length === 0) {
         emptySetlistState.style.display = 'block';
         return;
@@ -725,26 +731,39 @@ function renderSetlistView() {
         li.draggable = true;
         li.dataset.index = index;
         
-        // Add drag handle
-        const dragHandle = document.createElement('div');
-        dragHandle.className = 'drag-handle';
-        dragHandle.innerHTML = '⋮⋮';
-        dragHandle.title = 'Drag to reorder';
+        // Left drag handle
+        const leftDragHandle = document.createElement('div');
+        leftDragHandle.className = 'drag-handle left-handle';
+        leftDragHandle.innerHTML = '⋮⋮';
+        leftDragHandle.title = 'Drag to reorder';
         
         const songInfo = document.createElement('div');
         songInfo.className = 'song-info';
-        songInfo.innerHTML = `${song.title}`;  // Removed individual song duration
+        songInfo.innerHTML = `${song.title}`;
         
-        li.appendChild(dragHandle);
+        // Right drag handle
+        const rightDragHandle = document.createElement('div');
+        rightDragHandle.className = 'drag-handle right-handle';
+        rightDragHandle.innerHTML = '⋮⋮';
+        rightDragHandle.title = 'Drag to reorder';
+        
+        li.appendChild(leftDragHandle);
         li.appendChild(songInfo);
+        li.appendChild(rightDragHandle);
+        
+        // Add event listeners directly to each item
+        li.addEventListener('dragstart', handleSetlistDragStart);
+        li.addEventListener('dragend', handleSetlistDragEnd);
+        li.addEventListener('dragover', handleSetlistDragOver);
+        li.addEventListener('drop', handleSetlistDrop);
+        
+        // Add touch support for mobile
+        li.addEventListener('touchstart', handleTouchStart, { passive: false });
+        li.addEventListener('touchmove', handleTouchMove, { passive: false });
+        li.addEventListener('touchend', handleTouchEnd, { passive: false });
+        
         setlistSongs.appendChild(li);
     });
-
-    // Add drag and drop handlers
-    setlistSongs.addEventListener('dragstart', handleSetlistDragStart);
-    setlistSongs.addEventListener('dragend', handleSetlistDragEnd);
-    setlistSongs.addEventListener('dragover', handleSetlistDragOver);
-    setlistSongs.addEventListener('drop', handleSetlistDrop);
 }
 
 // Setlist drag and drop handlers
@@ -804,6 +823,96 @@ async function handleSetlistDrop(e) {
     // Update database
     await updateSetlist(currentSetlistId);
     renderSetlistView();
+}
+
+// Touch event handlers for mobile support
+let touchStartY = 0;
+let touchCurrentY = 0;
+let touchItem = null;
+
+function handleTouchStart(e) {
+    const item = e.target.closest('.setlist-song-item');
+    const dragHandle = e.target.closest('.drag-handle');
+    
+    // Only allow dragging if the drag handle was touched
+    if (!item || !dragHandle) return;
+    
+    touchItem = item;
+    touchStartY = e.touches[0].clientY;
+    touchCurrentY = touchStartY;
+    
+    item.classList.add('dragging');
+    e.preventDefault();
+}
+
+function handleTouchMove(e) {
+    if (!touchItem) return;
+    
+    touchCurrentY = e.touches[0].clientY;
+    const deltaY = touchCurrentY - touchStartY;
+    
+    // Move the item visually
+    touchItem.style.transform = `translateY(${deltaY}px)`;
+    touchItem.style.zIndex = '1000';
+    
+    // Find the item we're hovering over
+    const elementBelow = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+    const targetItem = elementBelow?.closest('.setlist-song-item');
+    
+    // Remove drag-over class from all items
+    document.querySelectorAll('.setlist-song-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+    
+    // Add drag-over class to target item
+    if (targetItem && targetItem !== touchItem) {
+        targetItem.classList.add('drag-over');
+    }
+    
+    e.preventDefault();
+}
+
+async function handleTouchEnd(e) {
+    if (!touchItem) return;
+    
+    // Find the item we're dropping on
+    const elementBelow = document.elementFromPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+    const dropTarget = elementBelow?.closest('.setlist-song-item');
+    
+    // Reset visual state
+    touchItem.style.transform = '';
+    touchItem.style.zIndex = '';
+    touchItem.classList.remove('dragging');
+    
+    // Remove drag-over class from all items
+    document.querySelectorAll('.setlist-song-item').forEach(item => {
+        item.classList.remove('drag-over');
+    });
+    
+    // Perform the drop if valid
+    if (dropTarget && dropTarget !== touchItem) {
+        const fromIndex = parseInt(touchItem.dataset.index);
+        const toIndex = parseInt(dropTarget.dataset.index);
+        
+        // Move song in the array
+        const setlist = setlists[currentSetlistId];
+        const songIds = [...setlist.song_ids];
+        const [movedSong] = songIds.splice(fromIndex, 1);
+        songIds.splice(toIndex, 0, movedSong);
+        
+        // Update local state
+        setlists[currentSetlistId].song_ids = songIds;
+        
+        // Update database
+        await updateSetlist(currentSetlistId);
+        renderSetlistView();
+    }
+    
+    touchItem = null;
+    touchStartY = 0;
+    touchCurrentY = 0;
+    
+    e.preventDefault();
 }
 
 // Render builder view
