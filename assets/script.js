@@ -858,12 +858,18 @@ function renderAvailableSongs() {
         songInfo.appendChild(songTitle);
         songInfo.appendChild(songDuration);
         
-        // Add button
+        // Add/Remove button
         const addBtn = document.createElement('button');
         addBtn.className = 'builder-add-btn';
-        addBtn.textContent = isInSetlist ? 'Added' : 'Add';
-        addBtn.disabled = isInSetlist;
-        addBtn.addEventListener('click', () => addSongToBuilder(songId));
+        if (isInSetlist) {
+            addBtn.textContent = 'Remove';
+            addBtn.style.backgroundColor = '#6c757d';
+            addBtn.addEventListener('click', () => removeSongFromBuilder(builderSongs.indexOf(songId)));
+        } else {
+            addBtn.textContent = 'Add';
+            addBtn.style.backgroundColor = '#007bff';
+            addBtn.addEventListener('click', () => addSongToBuilder(songId));
+        }
         
         songItem.appendChild(songInfo);
         songItem.appendChild(addBtn);

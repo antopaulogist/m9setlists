@@ -682,7 +682,7 @@ h3 {
     border: none;
     border-radius: var(--radius-md);
     padding: var(--space-3);
-    font-size: 18px;
+    font-size: 20px;
     font-weight: var(--font-medium);
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -692,18 +692,19 @@ h3 {
     min-height: 44px;
     min-width: 44px;
     touch-action: manipulation;
+    transform: rotate(45deg);
 }
 
 .setlist-build-btn:hover {
     background: var(--gray-100);
     color: #000;
-    transform: translateY(-1px);
+    transform: rotate(45deg) translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
 
 .setlist-build-btn:active {
     background: var(--gray-200);
-    transform: translateY(0);
+    transform: rotate(45deg) translateY(0);
 }
 
 .setlist-build-btn:focus {
@@ -717,7 +718,7 @@ h3 {
     border: none;
     border-radius: var(--radius-md);
     padding: var(--space-3);
-    font-size: 20px;
+    font-size: 22px;
     font-weight: var(--font-bold);
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -900,6 +901,14 @@ h3 {
     cursor: not-allowed;
 }
 
+.builder-add-btn.remove-mode {
+    background: #6c757d;
+}
+
+.builder-add-btn.remove-mode:hover {
+    background: #545b62;
+}
+
 #setlist-preview {
     flex: 1;
     background: #fff;
@@ -977,7 +986,7 @@ h3 {
 .builder-preview-info {
     flex: 1;
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
     margin: 0 var(--space-2);
 }
@@ -985,27 +994,34 @@ h3 {
 .builder-preview-title {
     font-weight: 500;
     color: #333;
+    text-align: center;
 }
 
 .builder-preview-duration {
-    font-size: 12px;
-    color: #666;
+    display: none;
 }
 
 .builder-remove-btn {
-    background: #dc3545;
-    color: white;
+    background: transparent;
+    color: var(--error-500);
     border: none;
-    border-radius: 3px;
-    padding: 4px 8px;
-    font-size: 12px;
+    border-radius: var(--radius-md);
+    padding: var(--space-2);
+    font-size: 16px;
+    font-weight: var(--font-bold);
     cursor: pointer;
-    transition: background 0.2s;
-    margin-left: 8px;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 32px;
+    min-width: 32px;
+    touch-action: manipulation;
 }
 
 .builder-remove-btn:hover {
-    background: #a71d2a;
+    background: var(--error-50);
+    color: var(--error-600);
 }
 
 /* Song Library Styles */
@@ -1053,12 +1069,12 @@ h3 {
 }
 
 .song-action-btn {
-    background: white;
+    background: transparent;
     color: var(--error-500);
-    border: 1px solid var(--gray-300);
+    border: none;
     border-radius: var(--radius-md);
     padding: var(--space-2);
-    font-size: 14px;
+    font-size: 16px;
     font-weight: var(--font-bold);
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -1073,19 +1089,16 @@ h3 {
 .song-action-btn:hover {
     background: var(--error-50);
     color: var(--error-600);
-    border-color: var(--error-300);
 }
 
 .song-action-btn.delete {
-    background: white;
+    background: transparent;
     color: var(--error-500);
-    border-color: var(--gray-300);
 }
 
 .song-action-btn.delete:hover {
     background: var(--error-50);
     color: var(--error-600);
-    border-color: var(--error-300);
 }
 
 /* Input Row Styles */
@@ -1197,8 +1210,8 @@ h3 {
     align-items: center;
     justify-content: space-between;
     max-width: 400px;
-    margin: 20px auto 0;
-    padding: 0 20px;
+    margin: var(--space-5) auto var(--space-6);
+    padding: 0 var(--space-5);
 }
 
 #back-btn {
@@ -1591,14 +1604,14 @@ h3 {
         min-height: 44px;
         min-width: 44px;
         padding: var(--space-2);
-        font-size: 16px;
+        font-size: 18px;
     }
 
     .setlist-delete-btn {
         min-height: 44px;
         min-width: 44px;
         padding: var(--space-2);
-        font-size: 18px;
+        font-size: 20px;
     }
     
     /* Setlist Songs */
